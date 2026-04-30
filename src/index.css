@@ -1,0 +1,44 @@
+@import "@fontsource/manrope/500.css";
+@import "@fontsource/manrope/600.css";
+@import "@fontsource/manrope/700.css";
+@import "@fontsource/newsreader/500.css";
+@import "@fontsource/newsreader/600.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color: #143329;
+    background: #f5faf5;
+    font-family: Manrope, "Avenir Next", "Segoe UI", sans-serif;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply min-h-screen bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(circle at top right, rgba(210, 236, 216, 0.72), transparent 28%),
+      linear-gradient(180deg, #fbfefb 0%, #f3faf4 100%);
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.03em;
+  }
+}
+
+@layer components {
+  .surface-glass {
+    @apply border border-white/60 bg-white/80 backdrop-blur-xl;
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "rewrites": [
+    {
+      "source": "/login",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/appointments",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/appointments/(.*)",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/new-patients",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/new-patients/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}
