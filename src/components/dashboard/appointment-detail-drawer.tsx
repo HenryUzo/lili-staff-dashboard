@@ -37,12 +37,19 @@ import {
   formatCalendarSyncStatus,
   formatDateOnly,
   formatDateTime,
+  formatPreferredSelections,
   formatSpecies,
   formatStatus,
   formatVisitType,
   toDateTimeLocalValue
 } from "@/lib/format";
-import type { AppointmentRequestStatus } from "@/types/api";
+import { cn } from "@/lib/utils";
+import type {
+  AppointmentPreferredSelection,
+  AppointmentRequestStatus
+} from "@/types/api";
+
+const DEFAULT_APPOINTMENT_MINUTES = 60;
 
 function DetailField({ label, value }: { label: string; value?: string | number | null }) {
   return (
@@ -50,6 +57,38 @@ function DetailField({ label, value }: { label: string; value?: string | number 
       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">{label}</p>
       <p className="text-sm leading-6 text-foreground">{value || "Not provided"}</p>
     </div>
+  );
+}
+
+function addMinutesToInputValue(value: string, minutes = DEFAULT_APPOINTMENT_MINUTES) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  date.setMinutes(date.getMinutes() + minutes);
+  return toDateTimeLocalValue(date.toISOString());
+}
+
+function createQuickSelectionValue(date: string, timeSlot: string) {
+  const normalizedTime = timeSlot.trim();
+
+  if (!/^\d{1,2}:\d{2}$/.test(normalizedTime)) {
+    return null;
+  }
+
+  const [hours, minutes] = normalizedTime.split(":");
+  return `${date}T${hours.padStart(2, "0")}:${minutes}`;
+}
+
+function flattenPreferredSelections(preferredSelections: AppointmentPreferredSelection[]) {
+  return preferredSelections.flatMap((selection) =>
+    selection.timeSlots.map((timeSlot) => ({
+      date: selection.date,
+      timeSlot,
+      startValue: createQuickSelectionValue(selection.date, timeSlot)
+    }))
   );
 }
 
@@ -114,8 +153,8 @@ export function AppointmentDetailDrawer({
       setActionMessage(
         updated.status === "CONFIRMED"
           ? updated.calendarSyncStatus === "SYNCED"
-            ? "Appointment saved and synced to calendar."
-            : "Appointment saved, but calendar sync still needs attention."
+            ? "Appointment confirmed and synced to calendar."
+            : "Appointment confirmed. Calendar sync still needs attention."
           : "Appointment updated successfully."
       );
       queryClient.setQueryData(["appointment-request", appointmentId], updated);
@@ -193,15 +232,17 @@ export function AppointmentDetailDrawer({
       !Number.isNaN(confirmedEndDate.getTime()) &&
       confirmedEndDate > confirmedStartDate &&
       Boolean(confirmedTimezone.trim()));
+  const quickSelections = useMemo(
+    () => flattenPreferredSelections(request?.preferredSelections ?? []),
+    [request?.preferredSelections]
+  );
   const statusChanged = Boolean(nextStatus && request && nextStatus !== request.status);
   const confirmedSlotChanged =
     Boolean(request) &&
     selectedStatus === "CONFIRMED" &&
-    (
-      confirmedStartInput !== toDateTimeLocalValue(request?.confirmedStartAt) ||
+    (confirmedStartInput !== toDateTimeLocalValue(request?.confirmedStartAt) ||
       confirmedEndInput !== toDateTimeLocalValue(request?.confirmedEndAt) ||
-      confirmedTimezone.trim() !== (request?.confirmedTimezone ?? request?.timezone ?? "")
-    );
+      confirmedTimezone.trim() !== (request?.confirmedTimezone ?? request?.timezone ?? ""));
   const canSave =
     Boolean(request) &&
     confirmedSlotIsValid &&
@@ -209,6 +250,29 @@ export function AppointmentDetailDrawer({
     !updateStatusMutation.isPending;
   const isUrgent = request?.visitType === "URGENT_CARE";
   const hasSyncIssue = request?.calendarSyncStatus === "FAILED";
+  const syncReadyAfterConfirm =
+    selectedStatus === "CONFIRMED" && confirmedSlotIsValid && request?.calendarSyncStatus !== "SYNCED";
+  const primaryActionLabel =
+    selectedStatus === "CONFIRMED"
+      ? request?.status === "CONFIRMED"
+        ? "Save confirmed appointment"
+        : "Confirm appointment"
+      : selectedStatus === "CANCELLED"
+        ? "Cancel appointment"
+        : `Save ${formatStatus(selectedStatus as AppointmentRequestStatus).toLowerCase()}`;
+
+  function applyQuickSelection(date: string, timeSlot: string) {
+    const startValue = createQuickSelectionValue(date, timeSlot);
+
+    if (!startValue) {
+      return;
+    }
+
+    setConfirmedStartInput(startValue);
+    setConfirmedEndInput(addMinutesToInputValue(startValue));
+    setConfirmedTimezone((currentValue) => currentValue || request?.timezone || "Africa/Lagos");
+    setNextStatus("CONFIRMED");
+  }
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
@@ -230,37 +294,37 @@ export function AppointmentDetailDrawer({
         ) : request ? (
           <>
             <DialogHeader className="space-y-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div className="space-y-2">
-                  <DialogTitle className="font-serif text-3xl">{request.pet.name}</DialogTitle>
-                  <DialogDescription className="flex flex-wrap items-center gap-3">
-                    <span>{formatVisitType(request.visitType)}</span>
-                    <span className="inline-flex items-center gap-1">
-                      <CalendarClock className="h-4 w-4" />
-                      Submitted {formatDateTime(request.createdAt)}
-                    </span>
-                  </DialogDescription>
-                </div>
-                <div className="space-y-2">
+              <div className="flex flex-col gap-4 border-b border-border/70 pb-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <DialogTitle className="font-serif text-3xl">{request.pet.name}</DialogTitle>
+                    <DialogDescription className="flex flex-wrap items-center gap-3">
+                      <span>{formatVisitType(request.visitType)}</span>
+                      <span className="inline-flex items-center gap-1">
+                        <CalendarClock className="h-4 w-4" />
+                        Submitted {formatDateTime(request.createdAt)}
+                      </span>
+                    </DialogDescription>
+                  </div>
                   <div className="flex flex-wrap items-center gap-2">
                     <StatusBadge status={request.status} />
                     <CalendarSyncBadge status={request.calendarSyncStatus} />
+                    <AppointmentPriorityBadges
+                      urgent={Boolean(isUrgent)}
+                      duplicate={request.possibleDuplicate}
+                      syncIssue={Boolean(hasSyncIssue)}
+                      compact
+                    />
                   </div>
-                  <AppointmentPriorityBadges
-                    urgent={Boolean(isUrgent)}
-                    duplicate={request.possibleDuplicate}
-                    syncIssue={Boolean(hasSyncIssue)}
-                    compact
-                  />
                 </div>
-              </div>
 
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">
-                  Move through the active queue without closing the review surface.
-                </p>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" disabled={!canNavigatePrevious} onClick={onNavigatePrevious}>
+                <div className="flex items-center gap-2 self-start">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canNavigatePrevious}
+                    onClick={onNavigatePrevious}
+                  >
                     <ChevronLeft className="h-4 w-4" />
                     Previous
                   </Button>
@@ -271,141 +335,276 @@ export function AppointmentDetailDrawer({
                 </div>
               </div>
 
-              <div className="grid gap-4 xl:grid-cols-3">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Status</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Select value={selectedStatus} onChange={(event) => setNextStatus(event.target.value as AppointmentRequestStatus)}>
-                      {APPOINTMENT_STATUS_OPTIONS.map((status) => (
-                        <option key={status} value={status}>
-                          {formatStatus(status)}
-                        </option>
-                      ))}
-                    </Select>
-                    {request.duplicateOfId ? (
-                      <Alert className="border-warning/30 bg-warning/10 text-warning">
-                        Possible duplicate of request {request.duplicateOfId}
-                      </Alert>
-                    ) : null}
-                    {selectedStatus === "CANCELLED" && request.calendarEventId ? (
-                      <Alert className="border-warning/30 bg-warning/10 text-warning">
-                        Cancelling this appointment will attempt to remove the existing calendar event.
-                      </Alert>
-                    ) : null}
-                    <Button
-                      className="w-full"
-                      disabled={!canSave}
-                      onClick={() =>
-                        updateStatusMutation.mutate({
-                          id: request.id,
-                          status: selectedStatus as AppointmentRequestStatus,
-                          confirmedStartAt:
-                            selectedStatus === "CONFIRMED" && confirmedStartDate
-                              ? confirmedStartDate.toISOString()
-                              : undefined,
-                          confirmedEndAt:
-                            selectedStatus === "CONFIRMED" && confirmedEndDate
-                              ? confirmedEndDate.toISOString()
-                              : undefined,
-                          confirmedTimezone:
-                            selectedStatus === "CONFIRMED" ? confirmedTimezone.trim() : undefined
-                        })
-                      }
-                    >
-                      {updateStatusMutation.isPending ? "Saving..." : "Save appointment update"}
-                    </Button>
-                  </CardContent>
-                </Card>
+              <div className="rounded-3xl border border-border bg-secondary/35 p-5">
+                <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[1.45fr_0.85fr]">
+                  <div className="space-y-5">
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                        Review appointment
+                      </p>
+                      <h3 className="text-2xl font-semibold text-foreground">
+                        Make one clear scheduling decision.
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Update the request status, confirm a slot when needed, and keep calendar sync visible without splitting the workflow.
+                      </p>
+                    </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Confirmed slot</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">Confirmed start</p>
-                      <Input
-                        type="datetime-local"
-                        value={confirmedStartInput}
-                        onChange={(event) => setConfirmedStartInput(event.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">Confirmed end</p>
-                      <Input
-                        type="datetime-local"
-                        value={confirmedEndInput}
-                        onChange={(event) => setConfirmedEndInput(event.target.value)}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">Timezone</p>
-                      <Input
-                        value={confirmedTimezone}
-                        onChange={(event) => setConfirmedTimezone(event.target.value)}
-                        placeholder="Africa/Lagos"
-                      />
-                    </div>
-                    {!confirmedSlotIsValid ? (
-                      <Alert>
-                        Confirmed appointments require a valid start time, end time, and timezone.
-                      </Alert>
-                    ) : null}
-                  </CardContent>
-                </Card>
+                    <div className="grid gap-4 md:grid-cols-[0.95fr_1.05fr]">
+                      <div className="space-y-4 rounded-[26px] border border-border bg-white p-4">
+                        <div className="space-y-2">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                            Status
+                          </p>
+                          <Select
+                            value={selectedStatus}
+                            onChange={(event) =>
+                              setNextStatus(event.target.value as AppointmentRequestStatus)
+                            }
+                          >
+                            {APPOINTMENT_STATUS_OPTIONS.map((status) => (
+                              <option key={status} value={status}>
+                                {formatStatus(status)}
+                              </option>
+                            ))}
+                          </Select>
+                        </div>
 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Calendar sync</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <CalendarSyncBadge status={request.calendarSyncStatus} />
-                      <span className="text-sm text-muted-foreground">
-                        {formatCalendarSyncStatus(request.calendarSyncStatus)}
-                      </span>
+                        {request.duplicateOfId ? (
+                          <Alert className="border-warning/30 bg-warning/10 text-warning">
+                            Possible duplicate of request {request.duplicateOfId}
+                          </Alert>
+                        ) : null}
+
+                        {selectedStatus === "CANCELLED" && request.calendarEventId ? (
+                          <Alert className="border-warning/30 bg-warning/10 text-warning">
+                            Cancelling this appointment will attempt to remove the existing calendar event.
+                          </Alert>
+                        ) : null}
+
+                        <div className="rounded-2xl border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
+                          {selectedStatus === "CONFIRMED"
+                            ? "Choose a confirmed start, end, and timezone before saving."
+                            : "Only confirmed appointments need a scheduled slot."}
+                        </div>
+                      </div>
+
+                      <div className="space-y-4 rounded-[26px] border border-border bg-white p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                              Calendar sync
+                            </p>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {formatCalendarSyncStatus(request.calendarSyncStatus)}
+                            </p>
+                          </div>
+                          <CalendarSyncBadge status={request.calendarSyncStatus} />
+                        </div>
+
+                        <div className="space-y-3 text-sm">
+                          <div className="rounded-2xl border border-border bg-secondary/30 p-3">
+                            <p className="font-medium text-foreground">
+                              {syncReadyAfterConfirm
+                                ? "This appointment will sync after confirmation."
+                                : request.calendarSyncStatus === "SYNCED"
+                                  ? "The confirmed appointment is already synced."
+                                  : "No calendar event has been synced yet."}
+                            </p>
+                            {request.calendarSyncError ? (
+                              <p className="mt-2 text-warning">{request.calendarSyncError}</p>
+                            ) : null}
+                          </div>
+                          <DetailField
+                            label="Last synced"
+                            value={formatDateTime(request.calendarSyncedAt)}
+                          />
+                          <div className="flex flex-wrap items-center gap-3">
+                            {request.calendarEventUrl ? (
+                              <Button asChild variant="outline" size="sm">
+                                <a href={request.calendarEventUrl} target="_blank" rel="noreferrer">
+                                  <ExternalLink className="h-4 w-4" />
+                                  Open calendar event
+                                </a>
+                              </Button>
+                            ) : null}
+                            {request.calendarSyncStatus === "FAILED" ? (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                disabled={retryCalendarSyncMutation.isPending}
+                                onClick={() => retryCalendarSyncMutation.mutate(request.id)}
+                              >
+                                <RefreshCw className="h-4 w-4" />
+                                {retryCalendarSyncMutation.isPending ? "Retrying..." : "Retry sync"}
+                              </Button>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <DetailField label="Confirmed start" value={formatDateTime(request.confirmedStartAt)} />
-                    <DetailField label="Last synced" value={formatDateTime(request.calendarSyncedAt)} />
-                    {request.calendarSyncError ? (
-                      <Alert className="border-warning/30 bg-warning/10 text-warning">
-                        {request.calendarSyncError}
+
+                    {selectedStatus === "CONFIRMED" ? (
+                      <div className="space-y-4 rounded-[26px] border border-border bg-white p-4">
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                            Choose confirmed time
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Start with a requested slot, then adjust manually if the clinic needs a different time.
+                          </p>
+                        </div>
+
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-foreground">Requested availability</p>
+                          {quickSelections.length > 0 ? (
+                            <div className="flex flex-wrap gap-2">
+                              {quickSelections.map((selection) => (
+                                <Button
+                                  key={`${selection.date}-${selection.timeSlot}`}
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="rounded-full"
+                                  disabled={!selection.startValue}
+                                  onClick={() => applyQuickSelection(selection.date, selection.timeSlot)}
+                                >
+                                  <CalendarClock className="h-4 w-4" />
+                                  {formatDateOnly(selection.date, selection.date)} · {selection.timeSlot}
+                                </Button>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground">
+                              No preferred date selections were captured for quick confirmation.
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="grid gap-4 md:grid-cols-2">
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                              Confirmed start
+                            </p>
+                            <Input
+                              type="datetime-local"
+                              value={confirmedStartInput}
+                              onChange={(event) => {
+                                const nextValue = event.target.value;
+                                setConfirmedStartInput(nextValue);
+
+                                if (!confirmedEndInput || new Date(confirmedEndInput) <= new Date(nextValue)) {
+                                  setConfirmedEndInput(addMinutesToInputValue(nextValue));
+                                }
+                              }}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                              Confirmed end
+                            </p>
+                            <Input
+                              type="datetime-local"
+                              value={confirmedEndInput}
+                              onChange={(event) => setConfirmedEndInput(event.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2 md:col-span-2">
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                              Timezone
+                            </p>
+                            <Input
+                              value={confirmedTimezone}
+                              onChange={(event) => setConfirmedTimezone(event.target.value)}
+                              placeholder="Africa/Lagos"
+                            />
+                          </div>
+                        </div>
+
+                        {!confirmedSlotIsValid ? (
+                          <Alert className="border-destructive/30 bg-destructive/10 text-destructive">
+                            Add a valid start time, end time, and timezone to confirm this appointment.
+                          </Alert>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {actionMessage ? (
+                      <Alert className="border-success/30 bg-success/10 text-success">
+                        {actionMessage}
                       </Alert>
                     ) : null}
+                    {actionError ? (
+                      <Alert className="border-destructive/30 bg-destructive/10 text-destructive">
+                        {actionError}
+                      </Alert>
+                    ) : null}
+
                     <div className="flex flex-wrap items-center gap-3">
-                      {request.calendarEventUrl ? (
-                        <Button asChild variant="outline">
-                          <a href={request.calendarEventUrl} target="_blank" rel="noreferrer">
-                            <ExternalLink className="h-4 w-4" />
-                            Open calendar event
-                          </a>
-                        </Button>
-                      ) : null}
-                      {request.calendarSyncStatus === "FAILED" ? (
-                        <Button
-                          variant="secondary"
-                          disabled={retryCalendarSyncMutation.isPending}
-                          onClick={() => retryCalendarSyncMutation.mutate(request.id)}
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                          {retryCalendarSyncMutation.isPending ? "Retrying..." : "Retry sync"}
-                        </Button>
-                      ) : null}
+                      <Button
+                        className="min-w-[220px]"
+                        disabled={!canSave}
+                        onClick={() =>
+                          updateStatusMutation.mutate({
+                            id: request.id,
+                            status: selectedStatus as AppointmentRequestStatus,
+                            confirmedStartAt:
+                              selectedStatus === "CONFIRMED" && confirmedStartDate
+                                ? confirmedStartDate.toISOString()
+                                : undefined,
+                            confirmedEndAt:
+                              selectedStatus === "CONFIRMED" && confirmedEndDate
+                                ? confirmedEndDate.toISOString()
+                                : undefined,
+                            confirmedTimezone:
+                              selectedStatus === "CONFIRMED" ? confirmedTimezone.trim() : undefined
+                          })
+                        }
+                      >
+                        {updateStatusMutation.isPending ? "Saving..." : primaryActionLabel}
+                      </Button>
+                      <p className="text-sm text-muted-foreground">
+                        The primary action stays disabled until the appointment state is valid.
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
 
-              {actionMessage ? <Alert className="border-success/30 bg-success/10 text-success">{actionMessage}</Alert> : null}
-              {actionError ? <Alert className="border-destructive/30 bg-destructive/10 text-destructive">{actionError}</Alert> : null}
+                  <div className="space-y-4">
+                    <div className="rounded-[26px] border border-border bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                        At a glance
+                      </p>
+                      <div className="mt-4 space-y-4">
+                        <DetailField label="Owner" value={`${request.owner.firstName} ${request.owner.lastName}`} />
+                        <DetailField label="Phone number" value={request.owner.phoneNumber} />
+                        <DetailField label="Preferred contact" value={request.owner.preferredContactMethod} />
+                        <DetailField
+                          label="Requested visit"
+                          value={formatPreferredSelections(request.preferredSelections)}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="rounded-[26px] border border-border bg-white p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                        Current confirmation
+                      </p>
+                      <div className="mt-4 space-y-4">
+                        <DetailField label="Confirmed start" value={formatDateTime(request.confirmedStartAt)} />
+                        <DetailField label="Confirmed end" value={formatDateTime(request.confirmedEndAt)} />
+                        <DetailField label="Timezone" value={request.confirmedTimezone ?? request.timezone} />
+                        <DetailField label="Status" value={formatStatus(request.status)} />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </DialogHeader>
 
             <div className="flex-1 space-y-5 overflow-y-auto bg-background/55 p-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Availability preferences</CardTitle>
+                  <CardTitle>Requested availability</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {request.preferredSelections.length > 0 ? (
@@ -416,23 +615,40 @@ export function AppointmentDetailDrawer({
                           {formatDateOnly(selection.date, selection.date)}
                         </div>
                         <div className="mt-3 flex flex-wrap gap-2">
-                          {selection.timeSlots.map((timeSlot) => (
-                            <div key={timeSlot} className="rounded-full bg-accent px-3 py-1 text-xs font-semibold text-accent-foreground">
-                              {timeSlot}
-                            </div>
-                          ))}
+                          {selection.timeSlots.map((timeSlot) => {
+                            const quickStartValue = createQuickSelectionValue(selection.date, timeSlot);
+
+                            return (
+                              <button
+                                key={timeSlot}
+                                type="button"
+                                onClick={() => applyQuickSelection(selection.date, timeSlot)}
+                                disabled={!quickStartValue}
+                                className={cn(
+                                  "rounded-full px-3 py-1 text-xs font-semibold transition",
+                                  quickStartValue
+                                    ? "bg-accent text-accent-foreground hover:bg-accent/80"
+                                    : "cursor-not-allowed bg-secondary text-muted-foreground"
+                                )}
+                              >
+                                {timeSlot}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-sm text-muted-foreground">No preferred date selections were captured.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No preferred date selections were captured.
+                    </p>
                   )}
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Owner and contact</CardTitle>
+                  <CardTitle>Owner contact</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-5 md:grid-cols-2">
                   <DetailField label="Owner" value={`${request.owner.firstName} ${request.owner.lastName}`} />
@@ -444,7 +660,7 @@ export function AppointmentDetailDrawer({
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Pet and visit details</CardTitle>
+                  <CardTitle>Pet and visit</CardTitle>
                 </CardHeader>
                 <CardContent className="grid gap-5 md:grid-cols-2">
                   <DetailField label="Pet" value={request.pet.name} />
@@ -452,7 +668,10 @@ export function AppointmentDetailDrawer({
                   <DetailField label="Breed" value={request.pet.breed} />
                   <DetailField label="Age" value={request.pet.age ?? request.pet.approximateAgeYears?.toString()} />
                   <DetailField label="Sex" value={request.pet.sex} />
-                  <DetailField label="Weight" value={request.pet.weightLbs ? `${request.pet.weightLbs} lbs` : null} />
+                  <DetailField
+                    label="Weight"
+                    value={request.pet.weightLbs ? `${request.pet.weightLbs} lbs` : null}
+                  />
                   <DetailField label="Visit type" value={formatVisitType(request.visitType)} />
                   <DetailField label="Timezone" value={request.timezone} />
                 </CardContent>
