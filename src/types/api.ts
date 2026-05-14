@@ -5,6 +5,7 @@ export type AppointmentRequestStatus =
   | "CANCELLED"
   | "COMPLETED"
   | "NO_SHOW";
+export type CalendarSyncStatus = "NOT_SYNCED" | "SYNCED" | "FAILED";
 export type VisitType =
   | "URGENT_CARE"
   | "WELLNESS_EXAM"
@@ -88,6 +89,14 @@ export interface AppointmentRequestListItem {
   status: AppointmentRequestStatus;
   visitType: VisitType;
   timezone: string | null;
+  confirmedStartAt: string | null;
+  confirmedEndAt: string | null;
+  confirmedTimezone: string | null;
+  calendarEventId: string | null;
+  calendarEventUrl: string | null;
+  calendarSyncStatus: CalendarSyncStatus;
+  calendarSyncedAt: string | null;
+  calendarSyncError: string | null;
   preferredSelections: AppointmentPreferredSelection[];
   possibleDuplicate: boolean;
   duplicateOfId: string | null;
@@ -103,6 +112,7 @@ export interface AppointmentRequestDetail extends AppointmentRequestListItem {
   currentMedications: string | null;
   previousVeterinarian: string | null;
   symptomDuration: string | null;
+  confirmedByStaffUserId: string | null;
   files: UploadedFile[];
   draft: {
     id: string;
@@ -170,6 +180,15 @@ export interface RawAppointmentBase {
   status: AppointmentRequestStatus;
   visitType: VisitType;
   timezone: string | null;
+  confirmedStartAt: string | null;
+  confirmedEndAt: string | null;
+  confirmedTimezone: string | null;
+  confirmedByStaffUserId?: string | null;
+  calendarEventId: string | null;
+  calendarEventUrl: string | null;
+  calendarSyncStatus: CalendarSyncStatus;
+  calendarSyncedAt: string | null;
+  calendarSyncError: string | null;
   preferredSelections?: RawAppointmentPreferredSelection[] | null;
   preferredSlots?: string[] | null;
   possibleDuplicate: boolean;
