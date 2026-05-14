@@ -336,22 +336,22 @@ export function AppointmentDetailDrawer({
               </div>
 
               <div className="rounded-3xl border border-border bg-secondary/35 p-5">
-                <div className="flex flex-col gap-6 xl:grid xl:grid-cols-[1.45fr_0.85fr]">
-                  <div className="space-y-5">
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                        Review appointment
-                      </p>
-                      <h3 className="text-2xl font-semibold text-foreground">
-                        Make one clear scheduling decision.
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        Update the request status, confirm a slot when needed, and keep calendar sync visible without splitting the workflow.
-                      </p>
-                    </div>
+                <div className="space-y-5">
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                      Review appointment
+                    </p>
+                    <h3 className="text-2xl font-semibold text-foreground">
+                      Choose a status and save it.
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      If you confirm the appointment, add a time. Everything else is secondary.
+                    </p>
+                  </div>
 
-                    <div className="grid gap-4 md:grid-cols-[0.95fr_1.05fr]">
-                      <div className="space-y-4 rounded-[26px] border border-border bg-white p-4">
+                  <div className="rounded-[26px] border border-border bg-white p-5">
+                    <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
+                      <div className="space-y-4">
                         <div className="space-y-2">
                           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
                             Status
@@ -370,6 +370,18 @@ export function AppointmentDetailDrawer({
                           </Select>
                         </div>
 
+                        <div className="rounded-2xl border border-border bg-secondary/25 p-4">
+                          <p className="text-sm font-medium text-foreground">
+                            {request.owner.firstName} {request.owner.lastName}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {request.owner.phoneNumber}
+                          </p>
+                          <p className="mt-3 text-sm text-muted-foreground">
+                            Requested: {formatPreferredSelections(request.preferredSelections)}
+                          </p>
+                        </div>
+
                         {request.duplicateOfId ? (
                           <Alert className="border-warning/30 bg-warning/10 text-warning">
                             Possible duplicate of request {request.duplicateOfId}
@@ -378,53 +390,115 @@ export function AppointmentDetailDrawer({
 
                         {selectedStatus === "CANCELLED" && request.calendarEventId ? (
                           <Alert className="border-warning/30 bg-warning/10 text-warning">
-                            Cancelling this appointment will attempt to remove the existing calendar event.
+                            Cancelling this appointment will also attempt to remove the calendar event.
                           </Alert>
                         ) : null}
-
-                        <div className="rounded-2xl border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
-                          {selectedStatus === "CONFIRMED"
-                            ? "Choose a confirmed start, end, and timezone before saving."
-                            : "Only confirmed appointments need a scheduled slot."}
-                        </div>
                       </div>
 
-                      <div className="space-y-4 rounded-[26px] border border-border bg-white p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                              Calendar sync
-                            </p>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              {formatCalendarSyncStatus(request.calendarSyncStatus)}
-                            </p>
-                          </div>
-                          <CalendarSyncBadge status={request.calendarSyncStatus} />
-                        </div>
+                      <div className="space-y-4">
+                        {selectedStatus === "CONFIRMED" ? (
+                          <>
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                                Pick a requested slot
+                              </p>
+                              {quickSelections.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {quickSelections.map((selection) => (
+                                    <Button
+                                      key={`${selection.date}-${selection.timeSlot}`}
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      className="rounded-full"
+                                      disabled={!selection.startValue}
+                                      onClick={() => applyQuickSelection(selection.date, selection.timeSlot)}
+                                    >
+                                      <CalendarClock className="h-4 w-4" />
+                                      {formatDateOnly(selection.date, selection.date)} · {selection.timeSlot}
+                                    </Button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">
+                                  No requested slot was captured. Enter a confirmed time manually.
+                                </p>
+                              )}
+                            </div>
 
-                        <div className="space-y-3 text-sm">
-                          <div className="rounded-2xl border border-border bg-secondary/30 p-3">
-                            <p className="font-medium text-foreground">
-                              {syncReadyAfterConfirm
-                                ? "This appointment will sync after confirmation."
-                                : request.calendarSyncStatus === "SYNCED"
-                                  ? "The confirmed appointment is already synced."
-                                  : "No calendar event has been synced yet."}
-                            </p>
-                            {request.calendarSyncError ? (
-                              <p className="mt-2 text-warning">{request.calendarSyncError}</p>
+                            <div className="grid gap-4 md:grid-cols-2">
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                                  Confirmed start
+                                </p>
+                                <Input
+                                  type="datetime-local"
+                                  value={confirmedStartInput}
+                                  onChange={(event) => {
+                                    const nextValue = event.target.value;
+                                    setConfirmedStartInput(nextValue);
+
+                                    if (
+                                      !confirmedEndInput ||
+                                      new Date(confirmedEndInput) <= new Date(nextValue)
+                                    ) {
+                                      setConfirmedEndInput(addMinutesToInputValue(nextValue));
+                                    }
+                                  }}
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                                  Confirmed end
+                                </p>
+                                <Input
+                                  type="datetime-local"
+                                  value={confirmedEndInput}
+                                  onChange={(event) => setConfirmedEndInput(event.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-2 md:col-span-2">
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                                  Timezone
+                                </p>
+                                <Input
+                                  value={confirmedTimezone}
+                                  onChange={(event) => setConfirmedTimezone(event.target.value)}
+                                  placeholder="Africa/Lagos"
+                                />
+                              </div>
+                            </div>
+
+                            {!confirmedSlotIsValid ? (
+                              <Alert className="border-destructive/30 bg-destructive/10 text-destructive">
+                                Add a valid start time, end time, and timezone before confirming.
+                              </Alert>
                             ) : null}
+                          </>
+                        ) : (
+                          <div className="rounded-2xl border border-border bg-secondary/25 p-4 text-sm text-muted-foreground">
+                            No scheduling details are needed for this status.
                           </div>
-                          <DetailField
-                            label="Last synced"
-                            value={formatDateTime(request.calendarSyncedAt)}
-                          />
-                          <div className="flex flex-wrap items-center gap-3">
+                        )}
+
+                        <div className="rounded-2xl border border-border bg-secondary/20 p-4">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <CalendarSyncBadge status={request.calendarSyncStatus} />
+                            <span className="text-sm text-foreground">
+                              {syncReadyAfterConfirm
+                                ? "Will sync after confirmation"
+                                : formatCalendarSyncStatus(request.calendarSyncStatus)}
+                            </span>
+                          </div>
+                          {request.calendarSyncError ? (
+                            <p className="mt-2 text-sm text-warning">{request.calendarSyncError}</p>
+                          ) : null}
+                          <div className="mt-3 flex flex-wrap items-center gap-3">
                             {request.calendarEventUrl ? (
                               <Button asChild variant="outline" size="sm">
                                 <a href={request.calendarEventUrl} target="_blank" rel="noreferrer">
                                   <ExternalLink className="h-4 w-4" />
-                                  Open calendar event
+                                  Open event
                                 </a>
                               </Button>
                             ) : null}
@@ -444,103 +518,18 @@ export function AppointmentDetailDrawer({
                       </div>
                     </div>
 
-                    {selectedStatus === "CONFIRMED" ? (
-                      <div className="space-y-4 rounded-[26px] border border-border bg-white p-4">
-                        <div className="space-y-1">
-                          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                            Choose confirmed time
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            Start with a requested slot, then adjust manually if the clinic needs a different time.
-                          </p>
-                        </div>
-
-                        <div className="space-y-2">
-                          <p className="text-sm font-medium text-foreground">Requested availability</p>
-                          {quickSelections.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {quickSelections.map((selection) => (
-                                <Button
-                                  key={`${selection.date}-${selection.timeSlot}`}
-                                  type="button"
-                                  variant="outline"
-                                  size="sm"
-                                  className="rounded-full"
-                                  disabled={!selection.startValue}
-                                  onClick={() => applyQuickSelection(selection.date, selection.timeSlot)}
-                                >
-                                  <CalendarClock className="h-4 w-4" />
-                                  {formatDateOnly(selection.date, selection.date)} · {selection.timeSlot}
-                                </Button>
-                              ))}
-                            </div>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              No preferred date selections were captured for quick confirmation.
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="grid gap-4 md:grid-cols-2">
-                          <div className="space-y-2">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                              Confirmed start
-                            </p>
-                            <Input
-                              type="datetime-local"
-                              value={confirmedStartInput}
-                              onChange={(event) => {
-                                const nextValue = event.target.value;
-                                setConfirmedStartInput(nextValue);
-
-                                if (!confirmedEndInput || new Date(confirmedEndInput) <= new Date(nextValue)) {
-                                  setConfirmedEndInput(addMinutesToInputValue(nextValue));
-                                }
-                              }}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                              Confirmed end
-                            </p>
-                            <Input
-                              type="datetime-local"
-                              value={confirmedEndInput}
-                              onChange={(event) => setConfirmedEndInput(event.target.value)}
-                            />
-                          </div>
-                          <div className="space-y-2 md:col-span-2">
-                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                              Timezone
-                            </p>
-                            <Input
-                              value={confirmedTimezone}
-                              onChange={(event) => setConfirmedTimezone(event.target.value)}
-                              placeholder="Africa/Lagos"
-                            />
-                          </div>
-                        </div>
-
-                        {!confirmedSlotIsValid ? (
-                          <Alert className="border-destructive/30 bg-destructive/10 text-destructive">
-                            Add a valid start time, end time, and timezone to confirm this appointment.
-                          </Alert>
-                        ) : null}
-                      </div>
-                    ) : null}
-
                     {actionMessage ? (
-                      <Alert className="border-success/30 bg-success/10 text-success">
+                      <Alert className="mt-4 border-success/30 bg-success/10 text-success">
                         {actionMessage}
                       </Alert>
                     ) : null}
                     {actionError ? (
-                      <Alert className="border-destructive/30 bg-destructive/10 text-destructive">
+                      <Alert className="mt-4 border-destructive/30 bg-destructive/10 text-destructive">
                         {actionError}
                       </Alert>
                     ) : null}
 
-                    <div className="flex flex-wrap items-center gap-3">
+                    <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-5">
                       <Button
                         className="min-w-[220px]"
                         disabled={!canSave}
@@ -564,37 +553,8 @@ export function AppointmentDetailDrawer({
                         {updateStatusMutation.isPending ? "Saving..." : primaryActionLabel}
                       </Button>
                       <p className="text-sm text-muted-foreground">
-                        The primary action stays disabled until the appointment state is valid.
+                        Save only becomes available when this step is complete.
                       </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="rounded-[26px] border border-border bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                        At a glance
-                      </p>
-                      <div className="mt-4 space-y-4">
-                        <DetailField label="Owner" value={`${request.owner.firstName} ${request.owner.lastName}`} />
-                        <DetailField label="Phone number" value={request.owner.phoneNumber} />
-                        <DetailField label="Preferred contact" value={request.owner.preferredContactMethod} />
-                        <DetailField
-                          label="Requested visit"
-                          value={formatPreferredSelections(request.preferredSelections)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="rounded-[26px] border border-border bg-white p-4">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                        Current confirmation
-                      </p>
-                      <div className="mt-4 space-y-4">
-                        <DetailField label="Confirmed start" value={formatDateTime(request.confirmedStartAt)} />
-                        <DetailField label="Confirmed end" value={formatDateTime(request.confirmedEndAt)} />
-                        <DetailField label="Timezone" value={request.confirmedTimezone ?? request.timezone} />
-                        <DetailField label="Status" value={formatStatus(request.status)} />
-                      </div>
                     </div>
                   </div>
                 </div>
