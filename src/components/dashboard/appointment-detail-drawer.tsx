@@ -350,7 +350,7 @@ export function AppointmentDetailDrawer({
                   </div>
 
                   <div className="rounded-[26px] border border-border bg-white p-5">
-                    <div className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
+                    <div className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
@@ -378,52 +378,89 @@ export function AppointmentDetailDrawer({
                             {request.owner.phoneNumber}
                           </p>
                           <p className="mt-3 text-sm text-muted-foreground">
-                            Requested: {formatPreferredSelections(request.preferredSelections)}
+                            {request.owner.preferredContactMethod || "Preferred contact not provided"}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {request.timezone || "Timezone not provided"}
                           </p>
                         </div>
-
-                        {request.duplicateOfId ? (
-                          <Alert className="border-warning/30 bg-warning/10 text-warning">
-                            Possible duplicate of request {request.duplicateOfId}
-                          </Alert>
-                        ) : null}
-
-                        {selectedStatus === "CANCELLED" && request.calendarEventId ? (
-                          <Alert className="border-warning/30 bg-warning/10 text-warning">
-                            Cancelling this appointment will also attempt to remove the calendar event.
-                          </Alert>
-                        ) : null}
                       </div>
 
                       <div className="space-y-4">
-                        {selectedStatus === "CONFIRMED" ? (
-                          <>
-                            <div className="space-y-2">
+                        <div className="rounded-2xl border border-border bg-secondary/15 p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
                               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                                Pick a requested slot
+                                Requested availability
                               </p>
-                              {quickSelections.length > 0 ? (
-                                <div className="flex flex-wrap gap-2">
-                                  {quickSelections.map((selection) => (
-                                    <Button
-                                      key={`${selection.date}-${selection.timeSlot}`}
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      className="rounded-full"
-                                      disabled={!selection.startValue}
-                                      onClick={() => applyQuickSelection(selection.date, selection.timeSlot)}
-                                    >
-                                      <CalendarClock className="h-4 w-4" />
-                                      {formatDateOnly(selection.date, selection.date)} · {selection.timeSlot}
-                                    </Button>
-                                  ))}
+                              <p className="mt-1 text-sm text-muted-foreground">
+                                Start from the client-requested times before confirming manually.
+                              </p>
+                            </div>
+                            <div className="rounded-full bg-secondary px-3 py-1 text-xs font-medium text-muted-foreground">
+                              {formatPreferredSelections(request.preferredSelections)}
+                            </div>
+                          </div>
+
+                          <div className="mt-4 space-y-3">
+                            {request.preferredSelections.length > 0 ? (
+                              request.preferredSelections.map((selection) => (
+                                <div
+                                  key={selection.date}
+                                  className="rounded-2xl border border-border bg-white p-4"
+                                >
+                                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                    <CalendarClock className="h-4 w-4 text-primary" />
+                                    {formatDateOnly(selection.date, selection.date)}
+                                  </div>
+                                  <div className="mt-3 flex flex-wrap gap-2">
+                                    {selection.timeSlots.map((timeSlot) => {
+                                      const quickStartValue = createQuickSelectionValue(
+                                        selection.date,
+                                        timeSlot
+                                      );
+                                      const isSelected =
+                                        Boolean(quickStartValue) && quickStartValue === confirmedStartInput;
+
+                                      return (
+                                        <button
+                                          key={timeSlot}
+                                          type="button"
+                                          onClick={() => applyQuickSelection(selection.date, timeSlot)}
+                                          disabled={!quickStartValue}
+                                          className={cn(
+                                            "rounded-full border px-3 py-1 text-xs font-semibold transition",
+                                            isSelected
+                                              ? "border-primary bg-primary text-primary-foreground"
+                                              : quickStartValue
+                                                ? "border-border bg-accent text-accent-foreground hover:bg-accent/80"
+                                                : "cursor-not-allowed border-border bg-secondary text-muted-foreground"
+                                          )}
+                                        >
+                                          {timeSlot}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
                                 </div>
-                              ) : (
-                                <p className="text-sm text-muted-foreground">
-                                  No requested slot was captured. Enter a confirmed time manually.
-                                </p>
-                              )}
+                              ))
+                            ) : (
+                              <div className="rounded-2xl border border-border bg-white p-4 text-sm text-muted-foreground">
+                                No preferred date selections were captured. Confirm manually if needed.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {selectedStatus === "CONFIRMED" ? (
+                          <div className="space-y-4 rounded-2xl border border-border bg-white p-4">
+                            <div className="space-y-1">
+                              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                                Confirmed slot
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Selecting a requested slot prefills these fields automatically.
+                              </p>
                             </div>
 
                             <div className="grid gap-4 md:grid-cols-2">
@@ -474,49 +511,26 @@ export function AppointmentDetailDrawer({
                                 Add a valid start time, end time, and timezone before confirming.
                               </Alert>
                             ) : null}
-                          </>
+                          </div>
                         ) : (
                           <div className="rounded-2xl border border-border bg-secondary/25 p-4 text-sm text-muted-foreground">
                             No scheduling details are needed for this status.
                           </div>
                         )}
-
-                        <div className="rounded-2xl border border-border bg-secondary/20 p-4">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <CalendarSyncBadge status={request.calendarSyncStatus} />
-                            <span className="text-sm text-foreground">
-                              {syncReadyAfterConfirm
-                                ? "Will sync after confirmation"
-                                : formatCalendarSyncStatus(request.calendarSyncStatus)}
-                            </span>
-                          </div>
-                          {request.calendarSyncError ? (
-                            <p className="mt-2 text-sm text-warning">{request.calendarSyncError}</p>
-                          ) : null}
-                          <div className="mt-3 flex flex-wrap items-center gap-3">
-                            {request.calendarEventUrl ? (
-                              <Button asChild variant="outline" size="sm">
-                                <a href={request.calendarEventUrl} target="_blank" rel="noreferrer">
-                                  <ExternalLink className="h-4 w-4" />
-                                  Open event
-                                </a>
-                              </Button>
-                            ) : null}
-                            {request.calendarSyncStatus === "FAILED" ? (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                disabled={retryCalendarSyncMutation.isPending}
-                                onClick={() => retryCalendarSyncMutation.mutate(request.id)}
-                              >
-                                <RefreshCw className="h-4 w-4" />
-                                {retryCalendarSyncMutation.isPending ? "Retrying..." : "Retry sync"}
-                              </Button>
-                            ) : null}
-                          </div>
-                        </div>
                       </div>
                     </div>
+
+                    {request.duplicateOfId ? (
+                      <Alert className="mt-4 border-warning/30 bg-warning/10 text-warning">
+                        Possible duplicate of request {request.duplicateOfId}
+                      </Alert>
+                    ) : null}
+
+                    {selectedStatus === "CANCELLED" && request.calendarEventId ? (
+                      <Alert className="mt-4 border-warning/30 bg-warning/10 text-warning">
+                        Cancelling this appointment will also attempt to remove the calendar event.
+                      </Alert>
+                    ) : null}
 
                     {actionMessage ? (
                       <Alert className="mt-4 border-success/30 bg-success/10 text-success">
@@ -552,9 +566,36 @@ export function AppointmentDetailDrawer({
                       >
                         {updateStatusMutation.isPending ? "Saving..." : primaryActionLabel}
                       </Button>
-                      <p className="text-sm text-muted-foreground">
-                        Save only becomes available when this step is complete.
-                      </p>
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                        <span>Save only becomes available when this step is complete.</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <CalendarSyncBadge status={request.calendarSyncStatus} />
+                          <span>
+                            {syncReadyAfterConfirm
+                              ? "Will sync after confirmation"
+                              : formatCalendarSyncStatus(request.calendarSyncStatus)}
+                          </span>
+                        </div>
+                        {request.calendarEventUrl ? (
+                          <Button asChild variant="outline" size="sm">
+                            <a href={request.calendarEventUrl} target="_blank" rel="noreferrer">
+                              <ExternalLink className="h-4 w-4" />
+                              Open event
+                            </a>
+                          </Button>
+                        ) : null}
+                        {request.calendarSyncStatus === "FAILED" ? (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={retryCalendarSyncMutation.isPending}
+                            onClick={() => retryCalendarSyncMutation.mutate(request.id)}
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                            {retryCalendarSyncMutation.isPending ? "Retrying..." : "Retry sync"}
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -562,50 +603,6 @@ export function AppointmentDetailDrawer({
             </DialogHeader>
 
             <div className="flex-1 space-y-5 overflow-y-auto bg-background/55 p-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Requested availability</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {request.preferredSelections.length > 0 ? (
-                    request.preferredSelections.map((selection) => (
-                      <div key={selection.date} className="rounded-2xl border border-border bg-white p-4">
-                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                          <CalendarClock className="h-4 w-4 text-primary" />
-                          {formatDateOnly(selection.date, selection.date)}
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {selection.timeSlots.map((timeSlot) => {
-                            const quickStartValue = createQuickSelectionValue(selection.date, timeSlot);
-
-                            return (
-                              <button
-                                key={timeSlot}
-                                type="button"
-                                onClick={() => applyQuickSelection(selection.date, timeSlot)}
-                                disabled={!quickStartValue}
-                                className={cn(
-                                  "rounded-full px-3 py-1 text-xs font-semibold transition",
-                                  quickStartValue
-                                    ? "bg-accent text-accent-foreground hover:bg-accent/80"
-                                    : "cursor-not-allowed bg-secondary text-muted-foreground"
-                                )}
-                              >
-                                {timeSlot}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      No preferred date selections were captured.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-
               <Card>
                 <CardHeader>
                   <CardTitle>Owner contact</CardTitle>
