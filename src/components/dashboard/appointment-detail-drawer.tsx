@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
+  FileText,
   RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
@@ -363,23 +364,27 @@ export function AppointmentDetailDrawer({
 
               <div className="rounded-3xl border border-border bg-secondary/35 p-5">
                 <div className="space-y-5">
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                      Review appointment
-                    </p>
-                    <h3 className="text-2xl font-semibold text-foreground">
-                      Choose a status and save it.
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      If you confirm the appointment, add a time. Everything else is secondary.
-                    </p>
-                    <button
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                        Review appointment
+                      </p>
+                      <h3 className="text-2xl font-semibold text-foreground">
+                        Choose a status and save it.
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        If you confirm the appointment, add a time. Everything else is secondary.
+                      </p>
+                    </div>
+                    <Button
                       type="button"
+                      variant="outline"
+                      className="shrink-0 self-start rounded-full border-primary/20 bg-white text-primary hover:bg-primary/5"
                       onClick={() => scrollToDetailsSection("owner-contact")}
-                      className="mt-3 inline-flex items-center text-sm font-semibold text-primary transition hover:text-primary/80"
                     >
+                      <FileText className="h-4 w-4" />
                       View full details
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="rounded-[26px] border border-border bg-white p-5">
