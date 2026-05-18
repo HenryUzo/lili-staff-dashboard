@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
@@ -50,6 +50,13 @@ import type {
 } from "@/types/api";
 
 const DEFAULT_APPOINTMENT_MINUTES = 60;
+const detailSections = [
+  { id: "owner-contact", label: "Contact" },
+  { id: "pet-visit", label: "Pet" },
+  { id: "medical-context", label: "Medical" },
+  { id: "attached-files", label: "Files" },
+  { id: "audit-meta", label: "Audit" }
+] as const;
 
 function DetailField({ label, value }: { label: string; value?: string | number | null }) {
   return (
@@ -110,6 +117,7 @@ export function AppointmentDetailDrawer({
   canNavigateNext?: boolean;
 }) {
   const queryClient = useQueryClient();
+  const detailsScrollRef = useRef<HTMLDivElement | null>(null);
   const [nextStatus, setNextStatus] = useState<AppointmentRequestStatus | "">("");
   const [confirmedStartInput, setConfirmedStartInput] = useState("");
   const [confirmedEndInput, setConfirmedEndInput] = useState("");
@@ -274,6 +282,24 @@ export function AppointmentDetailDrawer({
     setNextStatus("CONFIRMED");
   }
 
+  function scrollToDetailsSection(sectionId: (typeof detailSections)[number]["id"]) {
+    const container = detailsScrollRef.current;
+    const section = document.getElementById(sectionId);
+
+    if (!container || !section) {
+      return;
+    }
+
+    const containerRect = container.getBoundingClientRect();
+    const sectionRect = section.getBoundingClientRect();
+    const nextTop = container.scrollTop + (sectionRect.top - containerRect.top) - 88;
+
+    container.scrollTo({
+      top: Math.max(nextTop, 0),
+      behavior: "smooth"
+    });
+  }
+
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent>
@@ -347,6 +373,13 @@ export function AppointmentDetailDrawer({
                     <p className="text-sm text-muted-foreground">
                       If you confirm the appointment, add a time. Everything else is secondary.
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => scrollToDetailsSection("owner-contact")}
+                      className="mt-3 inline-flex items-center text-sm font-semibold text-primary transition hover:text-primary/80"
+                    >
+                      View full details
+                    </button>
                   </div>
 
                   <div className="rounded-[26px] border border-border bg-white p-5">
@@ -602,8 +635,23 @@ export function AppointmentDetailDrawer({
               </div>
             </DialogHeader>
 
-            <div className="flex-1 space-y-5 overflow-y-auto bg-background/55 p-6">
-              <Card>
+            <div ref={detailsScrollRef} className="flex-1 space-y-5 overflow-y-auto bg-background/55 p-6">
+              <div className="sticky top-0 z-10 -mt-2 border-b border-border/70 bg-background/95 pb-4 pt-2 backdrop-blur">
+                <div className="flex flex-wrap gap-2">
+                  {detailSections.map((section) => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      onClick={() => scrollToDetailsSection(section.id)}
+                      className="rounded-full border border-border bg-white px-3 py-1.5 text-sm font-medium text-muted-foreground transition hover:bg-secondary hover:text-foreground"
+                    >
+                      {section.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <Card id="owner-contact" className="scroll-mt-24">
                 <CardHeader>
                   <CardTitle>Owner contact</CardTitle>
                 </CardHeader>
@@ -615,7 +663,7 @@ export function AppointmentDetailDrawer({
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card id="pet-visit" className="scroll-mt-24">
                 <CardHeader>
                   <CardTitle>Pet and visit</CardTitle>
                 </CardHeader>
@@ -634,7 +682,7 @@ export function AppointmentDetailDrawer({
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card id="medical-context" className="scroll-mt-24">
                 <CardHeader>
                   <CardTitle>Medical context</CardTitle>
                 </CardHeader>
@@ -648,7 +696,7 @@ export function AppointmentDetailDrawer({
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card id="attached-files" className="scroll-mt-24">
                 <CardHeader>
                   <CardTitle>Attached files</CardTitle>
                 </CardHeader>
@@ -657,7 +705,7 @@ export function AppointmentDetailDrawer({
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card id="audit-meta" className="scroll-mt-24">
                 <CardHeader>
                   <CardTitle>Audit and meta</CardTitle>
                 </CardHeader>
