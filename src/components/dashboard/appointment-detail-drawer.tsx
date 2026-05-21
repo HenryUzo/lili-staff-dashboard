@@ -59,6 +59,34 @@ const detailSections = [
   { id: "audit-meta", label: "Audit" }
 ] as const;
 
+function parseDateTimeInputParts(value: string) {
+  const match = value.match(
+    /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})T(?<hour>\d{2}):(?<minute>\d{2})$/
+  );
+
+  if (!match?.groups) {
+    return null;
+  }
+
+  return {
+    year: Number(match.groups.year),
+    month: Number(match.groups.month),
+    day: Number(match.groups.day),
+    hour: Number(match.groups.hour),
+    minute: Number(match.groups.minute)
+  };
+}
+
+function formatUtcDateToLocalInput(date: Date) {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const hour = String(date.getUTCHours()).padStart(2, "0");
+  const minute = String(date.getUTCMinutes()).padStart(2, "0");
+
+  return `${year}-${month}-${day}T${hour}:${minute}`;
+}
+
 function DetailField({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <div className="space-y-1">
@@ -69,14 +97,77 @@ function DetailField({ label, value }: { label: string; value?: string | number 
 }
 
 function addMinutesToInputValue(value: string, minutes = DEFAULT_APPOINTMENT_MINUTES) {
-  const date = new Date(value);
+  const parts = parseDateTimeInputParts(value);
 
-  if (Number.isNaN(date.getTime())) {
+  if (!parts) {
     return "";
   }
 
-  date.setMinutes(date.getMinutes() + minutes);
-  return toDateTimeLocalValue(date.toISOString());
+  const date = new Date(
+    Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute + minutes)
+  );
+  return formatUtcDateToLocalInput(date);
+}
+
+function getTimeZoneOffsetMs(date: Date, timeZone: string) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hour12: false,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit"
+  });
+  const parts = Object.fromEntries(
+    formatter
+      .formatToParts(date)
+      .filter((part) => part.type !== "literal")
+      .map((part) => [part.type, part.value])
+  );
+  const asUtcTime = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second)
+  );
+
+  return asUtcTime - date.getTime();
+}
+
+function toUtcIsoFromTimeZone(value: string, timeZone: string) {
+  const parts = parseDateTimeInputParts(value);
+
+  if (!parts) {
+    return null;
+  }
+
+  const utcGuess = new Date(
+    Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0, 0)
+  );
+  let offset = getTimeZoneOffsetMs(utcGuess, timeZone);
+  let zonedDate = new Date(utcGuess.getTime() - offset);
+  const correctedOffset = getTimeZoneOffsetMs(zonedDate, timeZone);
+
+  if (correctedOffset !== offset) {
+    offset = correctedOffset;
+    zonedDate = new Date(utcGuess.getTime() - offset);
+  }
+
+  return zonedDate.toISOString();
+}
+
+function toComparableInputTime(value: string) {
+  const parts = parseDateTimeInputParts(value);
+
+  if (!parts) {
+    return null;
+  }
+
+  return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
 }
 
 function createQuickSelectionValue(date: string, timeSlot: string) {
@@ -243,15 +334,23 @@ export function AppointmentDetailDrawer({
     [nextStatus, request?.status]
   );
   const requiresConfirmedSlot = selectedStatus === "CONFIRMED";
-  const confirmedStartDate = confirmedStartInput ? new Date(confirmedStartInput) : null;
-  const confirmedEndDate = confirmedEndInput ? new Date(confirmedEndInput) : null;
+  const confirmedStartComparable = confirmedStartInput ? toComparableInputTime(confirmedStartInput) : null;
+  const confirmedEndComparable = confirmedEndInput ? toComparableInputTime(confirmedEndInput) : null;
+  const confirmedStartIso =
+    confirmedStartInput && confirmedTimezone.trim()
+      ? toUtcIsoFromTimeZone(confirmedStartInput, confirmedTimezone.trim())
+      : null;
+  const confirmedEndIso =
+    confirmedEndInput && confirmedTimezone.trim()
+      ? toUtcIsoFromTimeZone(confirmedEndInput, confirmedTimezone.trim())
+      : null;
   const confirmedSlotIsValid =
     !requiresConfirmedSlot ||
-    (confirmedStartDate &&
-      confirmedEndDate &&
-      !Number.isNaN(confirmedStartDate.getTime()) &&
-      !Number.isNaN(confirmedEndDate.getTime()) &&
-      confirmedEndDate > confirmedStartDate &&
+    (confirmedStartComparable !== null &&
+      confirmedEndComparable !== null &&
+      confirmedEndComparable > confirmedStartComparable &&
+      Boolean(confirmedStartIso) &&
+      Boolean(confirmedEndIso) &&
       Boolean(confirmedTimezone.trim()));
   const quickSelections = useMemo(
     () => flattenPreferredSelections(request?.preferredSelections ?? []),
@@ -584,7 +683,7 @@ export function AppointmentDetailDrawer({
                                       {selectedQuickSelection.timeSlot}
                                     </p>
                                     <p className="mt-1 text-sm text-muted-foreground">
-                                      Ends {formatDateTime(confirmedEndDate?.toISOString() ?? null)} •{" "}
+                                      Ends {confirmedEndInput ? confirmedEndInput.replace("T", " ") : "Not provided"} •{" "}
                                       {confirmedTimezone || request.timezone || "Timezone not provided"}
                                     </p>
                                   </div>
@@ -727,12 +826,12 @@ export function AppointmentDetailDrawer({
                             id: request.id,
                             status: selectedStatus as AppointmentRequestStatus,
                             confirmedStartAt:
-                              selectedStatus === "CONFIRMED" && confirmedStartDate
-                                ? confirmedStartDate.toISOString()
+                              selectedStatus === "CONFIRMED" && confirmedStartIso
+                                ? confirmedStartIso
                                 : undefined,
                             confirmedEndAt:
-                              selectedStatus === "CONFIRMED" && confirmedEndDate
-                                ? confirmedEndDate.toISOString()
+                              selectedStatus === "CONFIRMED" && confirmedEndIso
+                                ? confirmedEndIso
                                 : undefined,
                             confirmedTimezone:
                               selectedStatus === "CONFIRMED" ? confirmedTimezone.trim() : undefined
