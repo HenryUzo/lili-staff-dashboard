@@ -6,12 +6,14 @@ import {
   ChevronRight,
   ExternalLink,
   FileText,
+  Mail,
   RefreshCw
 } from "lucide-react";
 import { toast } from "sonner";
 import {
   getAppointmentRequest,
   retryAppointmentCalendarSync,
+  sendAppointmentRescheduleLink,
   updateAppointmentStatus
 } from "@/api/appointments";
 import { getErrorMessage } from "@/api/http";
@@ -107,6 +109,10 @@ function addMinutesToInputValue(value: string, minutes = DEFAULT_APPOINTMENT_MIN
     Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute + minutes)
   );
   return formatUtcDateToLocalInput(date);
+}
+
+function defaultResponseDeadlineInput() {
+  return toDateTimeLocalValue(new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString());
 }
 
 function getTimeZoneOffsetMs(date: Date, timeZone: string) {
@@ -212,6 +218,7 @@ export function AppointmentDetailDrawer({
   onClose,
   onNavigatePrevious,
   onNavigateNext,
+  onOpenReplacement,
   canNavigatePrevious,
   canNavigateNext
 }: {
@@ -220,6 +227,7 @@ export function AppointmentDetailDrawer({
   onClose: () => void;
   onNavigatePrevious?: () => void;
   onNavigateNext?: () => void;
+  onOpenReplacement?: (appointmentId: string) => void;
   canNavigatePrevious?: boolean;
   canNavigateNext?: boolean;
 }) {
@@ -229,6 +237,7 @@ export function AppointmentDetailDrawer({
   const [confirmedStartInput, setConfirmedStartInput] = useState("");
   const [confirmedEndInput, setConfirmedEndInput] = useState("");
   const [confirmedTimezone, setConfirmedTimezone] = useState("");
+  const [responseDeadlineInput, setResponseDeadlineInput] = useState("");
   const [manualOverrideEnabled, setManualOverrideEnabled] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -314,12 +323,40 @@ export function AppointmentDetailDrawer({
     }
   });
 
+  const sendRescheduleLinkMutation = useMutation({
+    mutationFn: ({
+      id,
+      responseDeadline
+    }: {
+      id: string;
+      responseDeadline: string;
+    }) => sendAppointmentRescheduleLink(id, responseDeadline),
+    onSuccess: async (updated) => {
+      setActionError(null);
+      setActionMessage("Reschedule email sent to the applicant.");
+      queryClient.setQueryData(["appointment-request", appointmentId], updated);
+      toast.success("Reschedule email sent");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["appointment-requests"] }),
+        queryClient.invalidateQueries({ queryKey: ["appointment-request", appointmentId] }),
+        queryClient.invalidateQueries({ queryKey: ["overview"] })
+      ]);
+    },
+    onError: (error) => {
+      const message = getErrorMessage(error, "Unable to send reschedule email");
+      setActionMessage(null);
+      setActionError(message);
+      toast.error(message);
+    }
+  });
+
   useEffect(() => {
     if (!request) {
       setNextStatus("");
       setConfirmedStartInput("");
       setConfirmedEndInput("");
       setConfirmedTimezone("");
+      setResponseDeadlineInput(defaultResponseDeadlineInput());
       setManualOverrideEnabled(false);
       setActionMessage(null);
       setActionError(null);
@@ -335,6 +372,11 @@ export function AppointmentDetailDrawer({
     setConfirmedStartInput(confirmedStartValue);
     setConfirmedEndInput(toDateTimeLocalValue(request.confirmedEndAt));
     setConfirmedTimezone(request.confirmedTimezone ?? request.timezone ?? "");
+    setResponseDeadlineInput(
+      request.rescheduleResponseDeadline
+        ? toDateTimeLocalValue(request.rescheduleResponseDeadline)
+        : defaultResponseDeadlineInput()
+    );
     setManualOverrideEnabled(
       Boolean(confirmedStartValue) &&
         requestedSlotValues.length > 0 &&
@@ -347,6 +389,13 @@ export function AppointmentDetailDrawer({
   const selectedStatus = useMemo(
     () => nextStatus || request?.status || "",
     [nextStatus, request?.status]
+  );
+  const statusOptions = useMemo(
+    () =>
+      request?.status === "OVERDUE"
+        ? (["OVERDUE", ...APPOINTMENT_STATUS_OPTIONS] as AppointmentRequestStatus[])
+        : APPOINTMENT_STATUS_OPTIONS,
+    [request?.status]
   );
   const requiresConfirmedSlot = selectedStatus === "CONFIRMED";
   const confirmedStartComparable = confirmedStartInput ? toComparableInputTime(confirmedStartInput) : null;
@@ -389,6 +438,24 @@ export function AppointmentDetailDrawer({
     confirmedSlotIsValid &&
     (statusChanged || confirmedSlotChanged) &&
     !updateStatusMutation.isPending;
+  const responseDeadlineIsValid =
+    Boolean(responseDeadlineInput) && !Number.isNaN(new Date(responseDeadlineInput).getTime());
+  const responseDeadlineIso = responseDeadlineIsValid
+    ? new Date(responseDeadlineInput).toISOString()
+    : "";
+  const rescheduleState = request?.replacementAppointmentRequestId
+    ? "completed"
+    : request?.rescheduleEmailSentAt
+      ? request.rescheduleResponseDeadline && new Date(request.rescheduleResponseDeadline) <= new Date()
+        ? "expired"
+        : "sent"
+      : "not-sent";
+  const canSendReschedule =
+    request?.status === "OVERDUE" &&
+    !request.replacementAppointmentRequestId &&
+    responseDeadlineIsValid &&
+    new Date(responseDeadlineInput).getTime() > Date.now() &&
+    !sendRescheduleLinkMutation.isPending;
   const isUrgent = request?.visitType === "URGENT_CARE";
   const hasSyncIssue = request?.calendarSyncStatus === "FAILED";
   const syncReadyAfterConfirm =
@@ -533,7 +600,7 @@ export function AppointmentDetailDrawer({
                               setNextStatus(event.target.value as AppointmentRequestStatus)
                             }
                           >
-                            {APPOINTMENT_STATUS_OPTIONS.map((status) => (
+                            {statusOptions.map((status) => (
                               <option key={status} value={status}>
                                 {formatStatus(status)}
                               </option>
@@ -555,6 +622,91 @@ export function AppointmentDetailDrawer({
                             {request.timezone || "Timezone not provided"}
                           </p>
                         </div>
+
+                        {request.status === "OVERDUE" ? (
+                          <div className="space-y-4 rounded-2xl border border-destructive/15 bg-destructive/5 p-4">
+                            <div className="space-y-1">
+                              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-destructive/80">
+                                Reschedule outreach
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Send the applicant a secure email link to choose new preferred dates.
+                              </p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                                Response deadline
+                              </p>
+                              <Input
+                                type="datetime-local"
+                                value={responseDeadlineInput}
+                                onChange={(event) => setResponseDeadlineInput(event.target.value)}
+                              />
+                            </div>
+
+                            <div className="rounded-2xl border border-border bg-white p-4 text-sm text-muted-foreground">
+                              <p>
+                                State:{" "}
+                                <span className="font-semibold text-foreground">
+                                  {rescheduleState === "completed"
+                                    ? "Completed"
+                                    : rescheduleState === "expired"
+                                      ? "Token expired"
+                                      : rescheduleState === "sent"
+                                        ? "Email sent"
+                                        : "Not sent"}
+                                </span>
+                              </p>
+                              <p className="mt-2">
+                                {request.rescheduleEmailSentAt
+                                  ? `Last email sent ${formatDateTime(request.rescheduleEmailSentAt)}`
+                                  : "No reschedule email has been sent yet."}
+                              </p>
+                              <p className="mt-2">
+                                {request.rescheduleResponseDeadline
+                                  ? `Response deadline ${formatDateTime(request.rescheduleResponseDeadline)}`
+                                  : "Choose a deadline before sending the email."}
+                              </p>
+                            </div>
+
+                            {request.replacementAppointmentRequestId && onOpenReplacement ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() =>
+                                  onOpenReplacement(request.replacementAppointmentRequestId!)
+                                }
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                Open replacement request
+                              </Button>
+                            ) : null}
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={!canSendReschedule}
+                              onClick={() =>
+                                sendRescheduleLinkMutation.mutate({
+                                  id: request.id,
+                                  responseDeadline: responseDeadlineIso
+                                })
+                              }
+                            >
+                              <Mail className="h-4 w-4" />
+                              {sendRescheduleLinkMutation.isPending
+                                ? "Sending..."
+                                : "Send reschedule email"}
+                            </Button>
+
+                            {!responseDeadlineIsValid ? (
+                              <Alert className="border-destructive/30 bg-destructive/10 text-destructive">
+                                Choose a valid future deadline before sending the reschedule email.
+                              </Alert>
+                            ) : null}
+                          </div>
+                        ) : null}
                       </div>
 
                       <div className="space-y-4">

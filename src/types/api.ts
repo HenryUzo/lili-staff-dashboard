@@ -2,6 +2,7 @@ export type StaffRole = "ADMIN" | "STAFF";
 export type AppointmentRequestStatus =
   | "PENDING_REVIEW"
   | "CONFIRMED"
+  | "OVERDUE"
   | "CANCELLED"
   | "COMPLETED"
   | "NO_SHOW";
@@ -92,6 +93,12 @@ export interface AppointmentRequestListItem {
   confirmedStartAt: string | null;
   confirmedEndAt: string | null;
   confirmedTimezone: string | null;
+  rescheduleRequestedAt: string | null;
+  rescheduleResponseDeadline: string | null;
+  rescheduleEmailSentAt: string | null;
+  rescheduleTokenIssuedAt: string | null;
+  rescheduledFromAppointmentRequestId: string | null;
+  replacementAppointmentRequestId: string | null;
   calendarEventId: string | null;
   calendarEventUrl: string | null;
   calendarSyncStatus: CalendarSyncStatus;
@@ -118,6 +125,11 @@ export interface AppointmentRequestDetail extends AppointmentRequestListItem {
     id: string;
     sessionToken: string;
     submittedAt: string | null;
+  } | null;
+  replacementAppointmentRequest?: {
+    id: string;
+    status: AppointmentRequestStatus;
+    createdAt: string;
   } | null;
 }
 
@@ -183,6 +195,12 @@ export interface RawAppointmentBase {
   confirmedStartAt: string | null;
   confirmedEndAt: string | null;
   confirmedTimezone: string | null;
+  rescheduleRequestedAt: string | null;
+  rescheduleResponseDeadline: string | null;
+  rescheduleEmailSentAt: string | null;
+  rescheduleTokenIssuedAt: string | null;
+  rescheduledFromAppointmentRequestId: string | null;
+  replacementAppointmentRequestId: string | null;
   confirmedByStaffUserId?: string | null;
   calendarEventId: string | null;
   calendarEventUrl: string | null;
@@ -209,5 +227,10 @@ export interface RawAppointmentDetail extends RawAppointmentBase {
     id: string;
     sessionToken: string;
     submittedAt: string | null;
+  } | null;
+  replacementAppointmentRequest?: {
+    id: string;
+    status: AppointmentRequestStatus;
+    createdAt: string;
   } | null;
 }

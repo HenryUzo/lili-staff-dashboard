@@ -89,3 +89,10 @@ export async function retryAppointmentCalendarSync(id: string) {
   const response = await api.post<RawAppointmentDetail>(`/api/appointment-requests/${id}/calendar-sync`);
   return normalizeAppointment(response.data);
 }
+
+export async function sendAppointmentRescheduleLink(id: string, responseDeadline: string) {
+  const response = await api.post<RawAppointmentDetail>(`/api/appointment-requests/${id}/reschedule-link`, {
+    responseDeadline
+  });
+  return normalizeAppointment(response.data);
+}

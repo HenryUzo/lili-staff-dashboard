@@ -27,9 +27,9 @@ import {
 import { cn } from "@/lib/utils";
 import type { AppointmentRequestListItem } from "@/types/api";
 
-type AppointmentQueueTab = "needs-review" | "scheduled" | "closed" | "all";
+type AppointmentQueueTab = "overdue" | "needs-review" | "scheduled" | "closed" | "all";
 
-const queueTabs: AppointmentQueueTab[] = ["needs-review", "scheduled", "closed", "all"];
+const queueTabs: AppointmentQueueTab[] = ["overdue", "needs-review", "scheduled", "closed", "all"];
 const closedStatuses = new Set(["CANCELLED", "COMPLETED", "NO_SHOW"]);
 
 function parseQueueTab(value: string | null): AppointmentQueueTab {
@@ -49,6 +49,7 @@ function isConfirmedToday(item: AppointmentRequestListItem) {
 }
 
 function getQueueState(item: AppointmentRequestListItem): Exclude<AppointmentQueueTab, "all"> {
+  if (item.status === "OVERDUE") return "overdue";
   if (item.status === "PENDING_REVIEW") return "needs-review";
   if (item.status === "CONFIRMED") return "scheduled";
   return "closed";
@@ -81,6 +82,14 @@ function sortAppointments(items: AppointmentRequestListItem[], tab: AppointmentQ
     const leftDuplicate = left.possibleDuplicate;
     const rightDuplicate = right.possibleDuplicate;
 
+    if (tab === "overdue") {
+      const leftEnd = left.confirmedEndAt ? new Date(left.confirmedEndAt).getTime() : Number.POSITIVE_INFINITY;
+      const rightEnd = right.confirmedEndAt ? new Date(right.confirmedEndAt).getTime() : Number.POSITIVE_INFINITY;
+      if (leftEnd !== rightEnd) return leftEnd - rightEnd;
+      if (leftUrgent !== rightUrgent) return leftUrgent ? -1 : 1;
+      return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+    }
+
     if (tab === "needs-review") {
       if (leftUrgent !== rightUrgent) return leftUrgent ? -1 : 1;
       if (leftDuplicate !== rightDuplicate) return leftDuplicate ? -1 : 1;
@@ -97,9 +106,16 @@ function sortAppointments(items: AppointmentRequestListItem[], tab: AppointmentQ
 
     const leftState = getQueueState(left);
     const rightState = getQueueState(right);
-    const stateRank = { "needs-review": 0, scheduled: 1, closed: 2 };
+    const stateRank = { overdue: 0, "needs-review": 1, scheduled: 2, closed: 3 };
 
     if (leftState !== rightState) return stateRank[leftState] - stateRank[rightState];
+    if (leftState === "overdue") {
+      const leftEnd = left.confirmedEndAt ? new Date(left.confirmedEndAt).getTime() : Number.POSITIVE_INFINITY;
+      const rightEnd = right.confirmedEndAt ? new Date(right.confirmedEndAt).getTime() : Number.POSITIVE_INFINITY;
+      if (leftEnd !== rightEnd) return leftEnd - rightEnd;
+      if (leftUrgent !== rightUrgent) return leftUrgent ? -1 : 1;
+      return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+    }
     if (leftState === "needs-review") {
       if (leftUrgent !== rightUrgent) return leftUrgent ? -1 : 1;
       if (leftDuplicate !== rightDuplicate) return leftDuplicate ? -1 : 1;
@@ -183,6 +199,7 @@ export function AppointmentRequestsPage() {
   const items = requestsQuery.data?.pages.flatMap((page) => page.data) ?? [];
   const tabCounts = useMemo(
     () => ({
+      overdue: items.filter((item) => item.status === "OVERDUE").length,
       "needs-review": items.filter((item) => item.status === "PENDING_REVIEW").length,
       scheduled: items.filter((item) => item.status === "CONFIRMED").length,
       closed: items.filter((item) => closedStatuses.has(item.status)).length,
@@ -191,6 +208,7 @@ export function AppointmentRequestsPage() {
     [items]
   );
   const pendingCount = tabCounts["needs-review"];
+  const overdueCount = tabCounts.overdue;
   const urgentCount = items.filter((item) => isUrgentAppointment(item)).length;
   const duplicateCount = items.filter((item) => item.possibleDuplicate).length;
   const failedSyncCount = items.filter((item) => hasCalendarIssue(item)).length;
@@ -225,11 +243,11 @@ export function AppointmentRequestsPage() {
 
       <div className="grid gap-4 xl:grid-cols-5">
         {[
+          { label: "Overdue", value: overdueCount, tone: "danger" },
           { label: "Pending review", value: pendingCount, tone: "default" },
           { label: "Urgent", value: urgentCount, tone: "danger" },
           { label: "Possible duplicates", value: duplicateCount, tone: "warning" },
-          { label: "Sync failures", value: failedSyncCount, tone: "danger" },
-          { label: "Confirmed today", value: confirmedTodayCount, tone: "success" }
+          { label: "Sync failures", value: failedSyncCount, tone: "danger" }
         ].map((item) => (
           <Card key={item.label}>
             <CardContent className="py-5">
@@ -254,6 +272,7 @@ export function AppointmentRequestsPage() {
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
             {[
+              { key: "overdue", label: "Overdue" },
               { key: "needs-review", label: "Needs Review" },
               { key: "scheduled", label: "Scheduled" },
               { key: "closed", label: "Closed" },
@@ -390,11 +409,11 @@ export function AppointmentRequestsPage() {
                       const urgent = isUrgentAppointment(item);
                       const syncIssue = hasCalendarIssue(item);
                       const timingLabel =
-                        item.status === "CONFIRMED" && item.confirmedStartAt
+                        (item.status === "CONFIRMED" || item.status === "OVERDUE") && item.confirmedStartAt
                           ? formatDateTime(item.confirmedStartAt)
                           : formatPreferredSelections(item.preferredSelections);
                       const timingMeta =
-                        item.status === "CONFIRMED"
+                        item.status === "CONFIRMED" || item.status === "OVERDUE"
                           ? item.confirmedTimezone || item.timezone || "Timezone not provided"
                           : item.timezone || "Timezone not provided";
 
@@ -437,7 +456,9 @@ export function AppointmentRequestsPage() {
                               <CalendarSyncBadge status={item.calendarSyncStatus} />
                             </div>
                             <p className="text-sm text-muted-foreground">
-                              {item.status === "CONFIRMED" ? formatRelativeTime(item.confirmedStartAt) : formatRelativeTime(item.createdAt)}
+                              {item.status === "CONFIRMED" || item.status === "OVERDUE"
+                                ? formatRelativeTime(item.confirmedEndAt ?? item.confirmedStartAt)
+                                : formatRelativeTime(item.createdAt)}
                             </p>
                           </div>
                           <div className="flex items-center justify-between gap-2 xl:justify-end">
@@ -496,6 +517,12 @@ export function AppointmentRequestsPage() {
         }
         canNavigatePrevious={Boolean(previousAppointmentId)}
         canNavigateNext={Boolean(nextAppointmentId)}
+        onOpenReplacement={(nextId) =>
+          navigate({
+            pathname: `/appointments/${nextId}`,
+            search: location.search
+          })
+        }
       />
     </div>
   );
