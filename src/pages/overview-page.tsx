@@ -48,7 +48,7 @@ type KpiTone = keyof typeof kpiStyles;
 
 function OverviewHero() {
   return (
-    <section className="relative grid min-h-[240px] w-full overflow-hidden rounded-[28px] border border-[rgba(221,235,226,0.92)] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(246,252,248,0.96))] px-8 py-9 shadow-large-card sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-center lg:gap-8">
+    <section className="relative grid min-h-[240px] w-full overflow-hidden rounded-[28px] border border-[rgba(221,235,226,0.92)] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(246,252,248,0.96))] px-8 py-9 sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-center lg:gap-8">
       <div className="pointer-events-none absolute right-2 top-1/2 hidden h-[300px] w-[500px] -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(199,238,217,0.55),transparent_64%)] lg:block" />
       <div className="relative z-10 max-w-[620px]">
         <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#087C48]">Today</p>
@@ -65,7 +65,7 @@ function OverviewHero() {
           src={operationsHeroCalendarDog}
           alt=""
           aria-hidden="true"
-          className="h-auto w-full max-w-[390px] object-contain object-center mix-blend-multiply lg:max-w-[420px]"
+          className="h-auto w-full max-w-[390px] object-contain object-center lg:max-w-[420px]"
         />
       </div>
     </section>
@@ -90,7 +90,7 @@ function KpiCard({
   const styles = kpiStyles[tone];
 
   return (
-    <article className="min-h-[160px] rounded-[22px] border border-[rgba(221,235,226,0.88)] bg-[rgba(255,255,255,0.96)] p-6 shadow-soft-card transition duration-180 hover:-translate-y-0.5 hover:shadow-large-card">
+    <article className="min-h-[160px] rounded-[22px] border border-[rgba(221,235,226,0.88)] bg-[rgba(255,255,255,0.96)] p-6 transition duration-180 hover:-translate-y-0.5">
       <div className={cn("flex h-12 w-12 items-center justify-center rounded-full", styles.icon)}>
         <Icon className="h-6 w-6" />
       </div>
@@ -145,7 +145,7 @@ function RecentAppointmentRow({ item, index }: { item: AppointmentRequestListIte
   return (
     <Link
       to={`/appointments/${item.id}`}
-      className="group flex min-h-[76px] items-center gap-3 rounded-[18px] border border-[#DDEBE2] bg-[#FAFCFA] px-[18px] py-4 transition duration-180 hover:-translate-y-px hover:bg-[#F5FBF7] hover:shadow-[0_12px_30px_rgba(15,64,42,0.06)]"
+      className="group flex min-h-[76px] items-center gap-3 rounded-[18px] border border-[#DDEBE2] bg-[#FAFCFA] px-[18px] py-4 transition duration-180 hover:-translate-y-px hover:bg-[#F5FBF7]"
     >
       <PetAvatar index={index} urgent={isUrgent} />
       <div className="min-w-0 flex-1">
@@ -177,7 +177,7 @@ function RecentNewPatientRow({ item, index }: { item: NewPatientRequest; index: 
   return (
     <Link
       to={`/new-patients/${item.id}`}
-      className="group flex min-h-[76px] items-center gap-3 rounded-[18px] border border-[#DDEBE2] bg-[#FAFCFA] px-[18px] py-4 transition duration-180 hover:-translate-y-px hover:bg-[#F5FBF7] hover:shadow-[0_12px_30px_rgba(15,64,42,0.06)]"
+      className="group flex min-h-[76px] items-center gap-3 rounded-[18px] border border-[#DDEBE2] bg-[#FAFCFA] px-[18px] py-4 transition duration-180 hover:-translate-y-px hover:bg-[#F5FBF7]"
     >
       <PetAvatar index={index} urgent={item.isUrgent} />
       <div className="min-w-0 flex-1">
@@ -216,7 +216,7 @@ function RecentActivityCard({
   linkLabel: string;
 }) {
   return (
-    <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-[26px] shadow-[0_22px_60px_rgba(15,64,42,0.08)]">
+    <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-[26px]">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-xl font-extrabold leading-[1.25] tracking-[-0.02em] text-[#102E24]">{title}</h2>
@@ -406,7 +406,7 @@ export function OverviewPage() {
         </RecentActivityCard>
       </div>
 
-      <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-7 shadow-[0_18px_42px_rgba(15,64,42,0.07)]">
+      <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-7">
         <div>
           <h2 className="text-xl font-extrabold leading-[1.25] tracking-[-0.02em] text-[#102E24]">Operational health</h2>
           <p className="mt-1 text-[13px] font-medium leading-[1.55] text-[#5F756C]">System status and file handling information.</p>
