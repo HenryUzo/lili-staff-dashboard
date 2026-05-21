@@ -1122,6 +1122,12 @@ export function AppointmentDetailDrawer({
                           </Button>
                         ) : null}
                       </div>
+                      {request.calendarSyncStatus === "FAILED" ? (
+                        <Alert className="mt-4 border-destructive/30 bg-destructive/10 text-destructive">
+                          {request.calendarSyncError?.trim() ||
+                            "Calendar sync failed. Check the Google Calendar integration and try again."}
+                        </Alert>
+                      ) : null}
                     </div>
                   </div>
                 </div>

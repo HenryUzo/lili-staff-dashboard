@@ -13,7 +13,11 @@ import { toast } from "sonner";
 import { getAppointmentRequests } from "@/api/appointments";
 import { getNewPatientRequests } from "@/api/new-patients";
 import { useAuth } from "@/auth/auth-context";
-import { getStoredNotificationStore, setStoredNotificationStore } from "@/lib/notification-storage";
+import {
+  createEmptyNotificationStore,
+  getStoredNotificationStore,
+  setStoredNotificationStore
+} from "@/lib/notification-storage";
 import { formatRelativeTime, formatSpecies, formatVisitType } from "@/lib/format";
 import type { AppointmentRequestListItem, NewPatientRequest } from "@/types/api";
 import type { StaffNotification, StaffNotificationKind, StaffNotificationStore } from "@/notifications/types";
@@ -79,18 +83,37 @@ function buildNewPatientNotification(item: NewPatientRequest): StaffNotification
 }
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [store, setStore] = useState<StaffNotificationStore>(() => getStoredNotificationStore());
+  const notificationScope = user?.id ?? null;
+  const [store, setStore] = useState<StaffNotificationStore>(() => createEmptyNotificationStore());
   const bootstrappedRef = useRef<Record<StaffNotificationKind, boolean>>({
     appointment: false,
     "new-patient": false
   });
 
   useEffect(() => {
-    setStoredNotificationStore(store);
-  }, [store]);
+    bootstrappedRef.current = {
+      appointment: false,
+      "new-patient": false
+    };
+
+    if (!isAuthenticated || !notificationScope) {
+      setStore(createEmptyNotificationStore());
+      return;
+    }
+
+    setStore(getStoredNotificationStore(notificationScope));
+  }, [isAuthenticated, notificationScope]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !notificationScope) {
+      return;
+    }
+
+    setStoredNotificationStore(store, notificationScope);
+  }, [isAuthenticated, notificationScope, store]);
 
   const appointmentWatchQuery = useQuery({
     queryKey: ["notification-watch", "appointments"],
@@ -112,6 +135,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
   function showToast(notification: StaffNotification) {
     toast(notification.title, {
+      id: notification.id,
       description: notification.description,
       action: {
         label: "Open",

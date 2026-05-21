@@ -8,11 +8,23 @@ const emptyStore: StaffNotificationStore = {
   seenNewPatientIds: []
 };
 
-export function getStoredNotificationStore(): StaffNotificationStore {
-  const raw = window.localStorage.getItem(NOTIFICATION_STORE_KEY);
+function getNotificationStoreKey(scope?: string | null) {
+  return scope ? `${NOTIFICATION_STORE_KEY}.${scope}` : NOTIFICATION_STORE_KEY;
+}
+
+export function createEmptyNotificationStore(): StaffNotificationStore {
+  return {
+    notifications: [],
+    seenAppointmentIds: [],
+    seenNewPatientIds: []
+  };
+}
+
+export function getStoredNotificationStore(scope?: string | null): StaffNotificationStore {
+  const raw = window.localStorage.getItem(getNotificationStoreKey(scope));
 
   if (!raw) {
-    return emptyStore;
+    return createEmptyNotificationStore();
   }
 
   try {
@@ -24,15 +36,15 @@ export function getStoredNotificationStore(): StaffNotificationStore {
       seenNewPatientIds: Array.isArray(parsed.seenNewPatientIds) ? parsed.seenNewPatientIds : []
     };
   } catch {
-    window.localStorage.removeItem(NOTIFICATION_STORE_KEY);
-    return emptyStore;
+    window.localStorage.removeItem(getNotificationStoreKey(scope));
+    return createEmptyNotificationStore();
   }
 }
 
-export function setStoredNotificationStore(store: StaffNotificationStore) {
-  window.localStorage.setItem(NOTIFICATION_STORE_KEY, JSON.stringify(store));
+export function setStoredNotificationStore(store: StaffNotificationStore, scope?: string | null) {
+  window.localStorage.setItem(getNotificationStoreKey(scope), JSON.stringify(store));
 }
 
-export function clearStoredNotificationStore() {
-  window.localStorage.removeItem(NOTIFICATION_STORE_KEY);
+export function clearStoredNotificationStore(scope?: string | null) {
+  window.localStorage.removeItem(getNotificationStoreKey(scope));
 }
