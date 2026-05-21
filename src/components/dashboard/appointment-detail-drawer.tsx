@@ -319,8 +319,8 @@ export function AppointmentDetailDrawer({
             />
           </div>
         ) : request ? (
-          <>
-            <DialogHeader className="space-y-4">
+          <div ref={detailsScrollRef} className="flex-1 overflow-y-auto">
+            <DialogHeader className="space-y-4 bg-white">
               <div className="flex flex-col gap-4 border-b border-border/70 pb-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="space-y-3">
                   <div className="space-y-1">
@@ -640,7 +640,7 @@ export function AppointmentDetailDrawer({
               </div>
             </DialogHeader>
 
-            <div ref={detailsScrollRef} className="flex-1 space-y-5 overflow-y-auto bg-background/55 p-6">
+            <div className="space-y-5 bg-background/55 p-6">
               <div className="sticky top-0 z-10 -mt-2 border-b border-border/70 bg-background/95 pb-4 pt-2 backdrop-blur">
                 <div className="flex flex-wrap gap-2">
                   {detailSections.map((section) => (
@@ -724,7 +724,7 @@ export function AppointmentDetailDrawer({
                 </CardContent>
               </Card>
             </div>
-          </>
+          </div>
         ) : null}
       </DialogContent>
     </Dialog>
