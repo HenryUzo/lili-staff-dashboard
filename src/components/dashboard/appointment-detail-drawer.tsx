@@ -123,6 +123,7 @@ export function AppointmentDetailDrawer({
   const [confirmedStartInput, setConfirmedStartInput] = useState("");
   const [confirmedEndInput, setConfirmedEndInput] = useState("");
   const [confirmedTimezone, setConfirmedTimezone] = useState("");
+  const [manualOverrideEnabled, setManualOverrideEnabled] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const detailQuery = useQuery({
@@ -213,15 +214,26 @@ export function AppointmentDetailDrawer({
       setConfirmedStartInput("");
       setConfirmedEndInput("");
       setConfirmedTimezone("");
+      setManualOverrideEnabled(false);
       setActionMessage(null);
       setActionError(null);
       return;
     }
 
+    const confirmedStartValue = toDateTimeLocalValue(request.confirmedStartAt);
+    const requestedSlotValues = flattenPreferredSelections(request.preferredSelections).flatMap((selection) =>
+      selection.startValue ? [selection.startValue] : []
+    );
+
     setNextStatus("");
-    setConfirmedStartInput(toDateTimeLocalValue(request.confirmedStartAt));
+    setConfirmedStartInput(confirmedStartValue);
     setConfirmedEndInput(toDateTimeLocalValue(request.confirmedEndAt));
     setConfirmedTimezone(request.confirmedTimezone ?? request.timezone ?? "");
+    setManualOverrideEnabled(
+      Boolean(confirmedStartValue) &&
+        requestedSlotValues.length > 0 &&
+        !requestedSlotValues.includes(confirmedStartValue)
+    );
     setActionMessage(null);
     setActionError(null);
   }, [request]);
@@ -245,6 +257,12 @@ export function AppointmentDetailDrawer({
     () => flattenPreferredSelections(request?.preferredSelections ?? []),
     [request?.preferredSelections]
   );
+  const selectedQuickSelection = useMemo(
+    () => quickSelections.find((selection) => selection.startValue === confirmedStartInput) ?? null,
+    [confirmedStartInput, quickSelections]
+  );
+  const hasRequestedSelections = quickSelections.length > 0;
+  const shouldUseRequestedSlotFlow = requiresConfirmedSlot && hasRequestedSelections && !manualOverrideEnabled;
   const statusChanged = Boolean(nextStatus && request && nextStatus !== request.status);
   const confirmedSlotChanged =
     Boolean(request) &&
@@ -280,6 +298,7 @@ export function AppointmentDetailDrawer({
     setConfirmedStartInput(startValue);
     setConfirmedEndInput(addMinutesToInputValue(startValue));
     setConfirmedTimezone((currentValue) => currentValue || request?.timezone || "Africa/Lagos");
+    setManualOverrideEnabled(false);
     setNextStatus("CONFIRMED");
   }
 
@@ -497,58 +516,126 @@ export function AppointmentDetailDrawer({
                                 Confirmed slot
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                Selecting a requested slot prefills these fields automatically.
+                                {hasRequestedSelections
+                                  ? "Select one of the applicant's preferred times first. Only use manual override when needed."
+                                  : "No preferred slots were captured, so confirm manually."}
                               </p>
                             </div>
 
-                            <div className="grid gap-4 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                                  Confirmed start
-                                </p>
-                                <Input
-                                  type="datetime-local"
-                                  value={confirmedStartInput}
-                                  onChange={(event) => {
-                                    const nextValue = event.target.value;
-                                    setConfirmedStartInput(nextValue);
+                            {shouldUseRequestedSlotFlow ? (
+                              <>
+                                {selectedQuickSelection ? (
+                                  <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
+                                    <p className="text-sm font-semibold text-foreground">
+                                      Confirming requested time
+                                    </p>
+                                    <p className="mt-2 text-sm text-muted-foreground">
+                                      {formatDateOnly(selectedQuickSelection.date, selectedQuickSelection.date)} at{" "}
+                                      {selectedQuickSelection.timeSlot}
+                                    </p>
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                      Ends {formatDateTime(confirmedEndDate?.toISOString() ?? null)} •{" "}
+                                      {confirmedTimezone || request.timezone || "Timezone not provided"}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <Alert className="border-destructive/30 bg-destructive/10 text-destructive">
+                                    Select one preferred time before confirming this appointment.
+                                  </Alert>
+                                )}
 
-                                    if (
-                                      !confirmedEndInput ||
-                                      new Date(confirmedEndInput) <= new Date(nextValue)
-                                    ) {
-                                      setConfirmedEndInput(addMinutesToInputValue(nextValue));
-                                    }
-                                  }}
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                                  Confirmed end
-                                </p>
-                                <Input
-                                  type="datetime-local"
-                                  value={confirmedEndInput}
-                                  onChange={(event) => setConfirmedEndInput(event.target.value)}
-                                />
-                              </div>
-                              <div className="space-y-2 md:col-span-2">
-                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
-                                  Timezone
-                                </p>
-                                <Input
-                                  value={confirmedTimezone}
-                                  onChange={(event) => setConfirmedTimezone(event.target.value)}
-                                  placeholder="Africa/Lagos"
-                                />
-                              </div>
-                            </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  className="px-0 text-primary hover:bg-transparent hover:text-primary/80"
+                                  onClick={() => setManualOverrideEnabled(true)}
+                                >
+                                  Use a different time
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                {hasRequestedSelections ? (
+                                  <Alert className="border-warning/30 bg-warning/10 text-warning">
+                                    You are overriding the applicant's preferred times. Confirm manually only if no requested slot works.
+                                  </Alert>
+                                ) : null}
 
-                            {!confirmedSlotIsValid ? (
-                              <Alert className="border-destructive/30 bg-destructive/10 text-destructive">
-                                Add a valid start time, end time, and timezone before confirming.
-                              </Alert>
-                            ) : null}
+                                <div className="grid gap-4 md:grid-cols-2">
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                                      Confirmed start
+                                    </p>
+                                    <Input
+                                      type="datetime-local"
+                                      value={confirmedStartInput}
+                                      onChange={(event) => {
+                                        const nextValue = event.target.value;
+                                        setConfirmedStartInput(nextValue);
+
+                                        if (
+                                          !confirmedEndInput ||
+                                          new Date(confirmedEndInput) <= new Date(nextValue)
+                                        ) {
+                                          setConfirmedEndInput(addMinutesToInputValue(nextValue));
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                                      Confirmed end
+                                    </p>
+                                    <Input
+                                      type="datetime-local"
+                                      value={confirmedEndInput}
+                                      onChange={(event) => setConfirmedEndInput(event.target.value)}
+                                    />
+                                  </div>
+                                  <div className="space-y-2 md:col-span-2">
+                                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary/60">
+                                      Timezone
+                                    </p>
+                                    <Input
+                                      value={confirmedTimezone}
+                                      onChange={(event) => setConfirmedTimezone(event.target.value)}
+                                      placeholder="Africa/Lagos"
+                                    />
+                                  </div>
+                                </div>
+
+                                {hasRequestedSelections ? (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="px-0 text-primary hover:bg-transparent hover:text-primary/80"
+                                    onClick={() => {
+                                      setManualOverrideEnabled(false);
+
+                                      if (selectedQuickSelection) {
+                                        applyQuickSelection(
+                                          selectedQuickSelection.date,
+                                          selectedQuickSelection.timeSlot
+                                        );
+                                        return;
+                                      }
+
+                                      setConfirmedStartInput("");
+                                      setConfirmedEndInput("");
+                                      setConfirmedTimezone(request.timezone ?? "");
+                                    }}
+                                  >
+                                    Back to requested times
+                                  </Button>
+                                ) : null}
+
+                                {!confirmedSlotIsValid ? (
+                                  <Alert className="border-destructive/30 bg-destructive/10 text-destructive">
+                                    Add a valid start time, end time, and timezone before confirming.
+                                  </Alert>
+                                ) : null}
+                              </>
+                            )}
                           </div>
                         ) : (
                           <div className="rounded-2xl border border-border bg-secondary/25 p-4 text-sm text-muted-foreground">
