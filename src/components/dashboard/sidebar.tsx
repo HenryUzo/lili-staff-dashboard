@@ -13,12 +13,12 @@ const navItems = [
 
 export function Sidebar() {
   return (
-    <aside className="hidden h-[calc(100vh-32px)] w-[280px] shrink-0 rounded-[28px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.92)] p-6 backdrop-blur-[18px] lg:sticky lg:top-4 lg:flex lg:flex-col">
+    <aside className="hidden h-[calc(100vh-32px)] w-[280px] shrink-0 rounded-[28px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.92)] p-6 shadow-sidebar backdrop-blur-[18px] lg:sticky lg:top-4 lg:flex lg:flex-col">
       <div className="mb-8 flex items-center gap-3">
         <img src={liliLogo} alt="Lili Vet Hospital" className="h-16 w-auto" />
       </div>
 
-      <div className="relative mb-8 min-h-[190px] overflow-hidden rounded-[24px] bg-[linear-gradient(145deg,#087C48_0%,#06452F_100%)] p-6 text-white">
+      <div className="relative mb-8 min-h-[190px] overflow-hidden rounded-[24px] bg-[linear-gradient(145deg,#087C48_0%,#06452F_100%)] p-6 text-white shadow-green-glow">
         <img
           src={careOperationsHeartline}
           alt=""
@@ -60,7 +60,7 @@ export function Sidebar() {
           aria-hidden="true"
           className="mx-auto w-[205px]"
         />
-        <div className="rounded-[22px] border border-[#DDEBE2] bg-white/95 p-6 text-sm leading-6 text-[#5F756C]">
+        <div className="rounded-[22px] border border-[#DDEBE2] bg-white/95 p-6 text-sm leading-6 text-[#5F756C] shadow-soft-card">
           <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-xl bg-[#EAF7F0] text-[#087C48]">
             <ShieldCheck className="h-4 w-4" />
           </div>
