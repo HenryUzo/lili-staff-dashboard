@@ -522,6 +522,56 @@ export function AppointmentDetailDrawer({
                               </p>
                             </div>
 
+                            {hasRequestedSelections ? (
+                              <div className="space-y-3 rounded-2xl border border-border bg-secondary/10 p-4">
+                                <p className="text-sm font-semibold text-foreground">
+                                  Available requested times
+                                </p>
+                                <div className="space-y-3">
+                                  {request.preferredSelections.map((selection) => (
+                                    <div key={`confirmed-${selection.date}`}>
+                                      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                                        <CalendarClock className="h-4 w-4 text-primary" />
+                                        {formatDateOnly(selection.date, selection.date)}
+                                      </div>
+                                      <div className="mt-2 flex flex-wrap gap-2">
+                                        {selection.timeSlots.map((timeSlot) => {
+                                          const quickStartValue = createQuickSelectionValue(
+                                            selection.date,
+                                            timeSlot
+                                          );
+                                          const isSelected =
+                                            Boolean(quickStartValue) &&
+                                            quickStartValue === confirmedStartInput;
+
+                                          return (
+                                            <button
+                                              key={`confirmed-${selection.date}-${timeSlot}`}
+                                              type="button"
+                                              onClick={() =>
+                                                applyQuickSelection(selection.date, timeSlot)
+                                              }
+                                              disabled={!quickStartValue}
+                                              className={cn(
+                                                "rounded-full border px-3 py-1 text-xs font-semibold transition",
+                                                isSelected
+                                                  ? "border-primary bg-primary text-primary-foreground"
+                                                  : quickStartValue
+                                                    ? "border-border bg-white text-foreground hover:bg-accent"
+                                                    : "cursor-not-allowed border-border bg-secondary text-muted-foreground"
+                                              )}
+                                            >
+                                              {timeSlot}
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : null}
+
                             {shouldUseRequestedSlotFlow ? (
                               <>
                                 {selectedQuickSelection ? (
