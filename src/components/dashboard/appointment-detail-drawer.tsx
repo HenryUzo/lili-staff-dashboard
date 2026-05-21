@@ -170,15 +170,30 @@ function toComparableInputTime(value: string) {
   return Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute);
 }
 
+function normalizeSelectionDateKey(value: string) {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  const parsed = new Date(value);
+
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed.toISOString().slice(0, 10);
+}
+
 function createQuickSelectionValue(date: string, timeSlot: string) {
   const normalizedTime = timeSlot.trim();
+  const normalizedDate = normalizeSelectionDateKey(date);
 
-  if (!/^\d{1,2}:\d{2}$/.test(normalizedTime)) {
+  if (!normalizedDate || !/^\d{1,2}:\d{2}$/.test(normalizedTime)) {
     return null;
   }
 
   const [hours, minutes] = normalizedTime.split(":");
-  return `${date}T${hours.padStart(2, "0")}:${minutes}`;
+  return `${normalizedDate}T${hours.padStart(2, "0")}:${minutes}`;
 }
 
 function flattenPreferredSelections(preferredSelections: AppointmentPreferredSelection[]) {
