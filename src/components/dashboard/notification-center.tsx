@@ -22,7 +22,7 @@ export function NotificationCenter() {
   }, []);
 
   return (
-    <div ref={containerRef} className="relative">
+    <div ref={containerRef} className="relative z-30">
       <Button
         variant="outline"
         size="icon"
@@ -39,7 +39,7 @@ export function NotificationCenter() {
       </Button>
 
       {open ? (
-        <div className="absolute right-0 top-full z-30 mt-3 w-[min(420px,calc(100vw-32px))] rounded-[28px] border border-white/70 bg-white/95 p-4 shadow-shell backdrop-blur-xl">
+        <div className="absolute right-0 top-full z-[70] mt-3 w-[min(420px,calc(100vw-32px))] rounded-[28px] border border-white/70 bg-white/95 p-4 shadow-shell backdrop-blur-xl">
           <div className="flex items-start justify-between gap-4 border-b border-border/70 px-2 pb-4">
             <div>
               <p className="text-sm font-semibold text-foreground">Staff notifications</p>

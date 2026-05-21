@@ -17,7 +17,7 @@ export function Topbar() {
   const label = labels[basePath] ?? "Staff dashboard";
 
   return (
-    <header className="surface-glass flex flex-col gap-4 rounded-[28px] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+    <header className="surface-glass relative z-20 flex flex-col gap-4 rounded-[28px] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <p className="text-sm font-medium text-muted-foreground">{label}</p>
         <div className="mt-1 flex items-center gap-2 text-sm text-primary">
