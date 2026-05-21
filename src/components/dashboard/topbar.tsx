@@ -1,6 +1,7 @@
 import { CalendarRange, LogOut, ShieldCheck } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/auth/auth-context";
+import { NotificationCenter } from "@/components/dashboard/notification-center";
 import { Button } from "@/components/ui/button";
 
 const labels: Record<string, string> = {
@@ -31,6 +32,7 @@ export function Topbar() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
+        <NotificationCenter />
         <div className="rounded-2xl border border-border bg-white px-4 py-3 text-right">
           <div className="flex items-center justify-end gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-primary/70">
             <ShieldCheck className="h-3.5 w-3.5" />
