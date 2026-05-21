@@ -1,34 +1,48 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ComponentType, ReactNode } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChevronRight, LoaderCircle, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  BellRing,
+  CalendarDays,
+  ChevronRight,
+  Clock3,
+  Copy,
+  FileText,
+  Globe2,
+  Hourglass,
+  LoaderCircle,
+  MoreVertical,
+  PawPrint,
+  RefreshCw,
+  Search,
+  ShieldAlert,
+  Stethoscope,
+  Zap
+} from "lucide-react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { getAppointmentRequests, runAppointmentOverdueSweep } from "@/api/appointments";
 import { getErrorMessage } from "@/api/http";
+import { useAuth } from "@/auth/auth-context";
 import { AppointmentDetailDrawer } from "@/components/dashboard/appointment-detail-drawer";
-import { AppointmentPriorityBadges } from "@/components/dashboard/appointment-priority-badges";
-import { CalendarSyncBadge } from "@/components/dashboard/calendar-sync-badge";
-import { EmptyState } from "@/components/dashboard/empty-state";
-import { ErrorState } from "@/components/dashboard/error-state";
-import { PageHeader } from "@/components/dashboard/page-header";
-import { StatusBadge } from "@/components/dashboard/status-badge";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import heroOrangeCatIllustration from "@/assets/illustrations/hero-orange-cat-illustration.png";
+import emptyFilesStateIllustration from "@/assets/illustrations/empty-files-state-illustration.png";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useAuth } from "@/auth/auth-context";
+import { hasStalePendingReviewRequest } from "@/lib/appointment-state";
 import {
   formatDateTime,
   formatPreferredSelections,
   formatRelativeTime,
+  formatStatus,
   formatVisitType,
   isToday
 } from "@/lib/format";
-import { hasStalePendingReviewRequest } from "@/lib/appointment-state";
 import { cn } from "@/lib/utils";
-import type { AppointmentRequestListItem } from "@/types/api";
-import { toast } from "sonner";
+import type { AppointmentRequestListItem, AppointmentRequestStatus, CalendarSyncStatus } from "@/types/api";
 
 type AppointmentQueueTab = "overdue" | "needs-review" | "scheduled" | "closed" | "all";
 
@@ -106,39 +120,189 @@ function sortAppointments(items: AppointmentRequestListItem[], tab: AppointmentQ
       return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
     }
 
-    if (tab === "scheduled") {
-      return compareScheduled(left, right);
-    }
-
-    if (tab === "closed") {
-      return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
-    }
+    if (tab === "scheduled") return compareScheduled(left, right);
+    if (tab === "closed") return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
 
     const leftState = getQueueState(left);
     const rightState = getQueueState(right);
     const stateRank = { overdue: 0, "needs-review": 1, scheduled: 2, closed: 3 };
 
     if (leftState !== rightState) return stateRank[leftState] - stateRank[rightState];
-    if (leftState === "overdue") {
-      const leftEnd = left.confirmedEndAt ? new Date(left.confirmedEndAt).getTime() : Number.POSITIVE_INFINITY;
-      const rightEnd = right.confirmedEndAt ? new Date(right.confirmedEndAt).getTime() : Number.POSITIVE_INFINITY;
-      if (leftEnd !== rightEnd) return leftEnd - rightEnd;
-      if (leftUrgent !== rightUrgent) return leftUrgent ? -1 : 1;
-      return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
-    }
-    if (leftState === "needs-review") {
-      if (leftUrgent !== rightUrgent) return leftUrgent ? -1 : 1;
-      if (leftStale !== rightStale) return leftStale ? -1 : 1;
-      if (leftDuplicate !== rightDuplicate) return leftDuplicate ? -1 : 1;
-      return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
-    }
-    if (leftState === "scheduled") {
-      return compareScheduled(left, right);
-    }
-    return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+    if (leftState === "scheduled") return compareScheduled(left, right);
+    if (leftState === "closed") return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
+    if (leftUrgent !== rightUrgent) return leftUrgent ? -1 : 1;
+    if (leftStale !== rightStale) return leftStale ? -1 : 1;
+    if (leftDuplicate !== rightDuplicate) return leftDuplicate ? -1 : 1;
+    return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
   });
 
   return sorted;
+}
+
+function MetricCard({
+  label,
+  value,
+  icon: Icon,
+  tone
+}: {
+  label: string;
+  value: number;
+  icon: ComponentType<{ className?: string }>;
+  tone: "red" | "green" | "amber" | "blue" | "purple" | "pink";
+}) {
+  const tones = {
+    red: "bg-[#FFE8E8] text-[#D93030]",
+    green: "bg-[#EAF7F0] text-[#087C48]",
+    amber: "bg-[#FFF3D9] text-[#A46600]",
+    blue: "bg-[#EAF3FF] text-[#2673D9]",
+    purple: "bg-[#F1E8FF] text-[#7B3FD6]",
+    pink: "bg-[#FFEAF4] text-[#D93A85]"
+  };
+
+  return (
+    <div className="rounded-[20px] border border-[#DDEBE2] bg-white p-5 shadow-[0_16px_45px_rgba(16,46,36,0.06)]">
+      <div className="flex items-center gap-4">
+        <div className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-full", tones[tone])}>
+          <Icon className="h-7 w-7" />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-extrabold text-[#102E24]">{label}</p>
+          <div className="mt-2 flex items-center gap-3">
+            <p className="text-3xl font-black leading-none text-[#102E24]">{value}</p>
+            <span className={cn("rounded-full px-2.5 py-1 text-xs font-extrabold", tones[tone])}>Live</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FilterPill({
+  active,
+  children,
+  onClick,
+  icon: Icon
+}: {
+  active?: boolean;
+  children: ReactNode;
+  onClick: () => void;
+  icon?: ComponentType<{ className?: string }>;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-extrabold transition",
+        active
+          ? "border-[#087C48] bg-[#087C48] text-white shadow-[0_10px_24px_rgba(8,124,72,0.18)]"
+          : "border-[#DDEBE2] bg-white text-[#5F756C] hover:border-[#BFD8CA] hover:bg-[#F5FBF7] hover:text-[#087C48]"
+      )}
+    >
+      {Icon ? <Icon className="h-4 w-4" /> : null}
+      {children}
+    </button>
+  );
+}
+
+function PriorityPill({ item }: { item: AppointmentRequestListItem }) {
+  const stale = isStalePendingReview(item);
+  const urgent = isUrgentAppointment(item);
+  const syncIssue = hasCalendarIssue(item);
+
+  if (stale) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-2xl bg-[#FFF3D9] px-4 py-3 text-xs font-extrabold leading-4 text-[#A46600]">
+        <Clock3 className="h-4 w-4" />
+        Requested slots passed
+      </span>
+    );
+  }
+
+  if (item.status === "OVERDUE") {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-2xl bg-[#FFE8E8] px-4 py-3 text-xs font-extrabold text-[#D93030]">
+        <Clock3 className="h-4 w-4" />
+        Overdue
+      </span>
+    );
+  }
+
+  if (urgent) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-2xl bg-[#EAF3FF] px-4 py-3 text-xs font-extrabold text-[#2673D9]">
+        <ShieldAlert className="h-4 w-4" />
+        Urgent
+      </span>
+    );
+  }
+
+  if (syncIssue) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-2xl bg-[#FFEAF4] px-4 py-3 text-xs font-extrabold text-[#D93A85]">
+        <RefreshCw className="h-4 w-4" />
+        Sync issue
+      </span>
+    );
+  }
+
+  if (item.possibleDuplicate) {
+    return (
+      <span className="inline-flex items-center gap-2 rounded-2xl bg-[#F1E8FF] px-4 py-3 text-xs font-extrabold text-[#7B3FD6]">
+        <Copy className="h-4 w-4" />
+        Possible duplicate
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-2 rounded-2xl bg-[#EAF7F0] px-4 py-3 text-xs font-extrabold text-[#5F756C]">
+      <Clock3 className="h-4 w-4" />
+      Routine
+    </span>
+  );
+}
+
+function StatusPill({ status }: { status: AppointmentRequestStatus }) {
+  const tone =
+    status === "CONFIRMED" || status === "COMPLETED"
+      ? "bg-[#DFF1E7] text-[#087C48]"
+      : status === "PENDING_REVIEW"
+        ? "bg-[#FFF3D9] text-[#A46600]"
+        : "bg-[#FFE8E8] text-[#D93030]";
+
+  return <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-extrabold", tone)}>{formatStatus(status)}</span>;
+}
+
+function SyncPill({ status }: { status: CalendarSyncStatus }) {
+  const config =
+    status === "SYNCED"
+      ? { label: "Synced", className: "bg-[#DFF1E7] text-[#087C48]" }
+      : status === "FAILED"
+        ? { label: "Sync failed", className: "bg-[#FFEAF4] text-[#D93A85]" }
+        : { label: "Not synced", className: "bg-[#EAF7F0] text-[#5F756C]" };
+
+  return (
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold", config.className)}>
+      <RefreshCw className="h-3.5 w-3.5" />
+      {config.label}
+    </span>
+  );
+}
+
+function PetAvatar({ item }: { item: AppointmentRequestListItem }) {
+  const isCat = item.pet.species === "CAT";
+
+  return (
+    <span
+      className={cn(
+        "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
+        isCat ? "bg-[#F1E8FF] text-[#7B3FD6]" : "bg-[#DFF1E7] text-[#087C48]"
+      )}
+    >
+      <PawPrint className="h-5 w-5" />
+    </span>
+  );
 }
 
 export function AppointmentRequestsPage() {
@@ -247,9 +411,6 @@ export function AppointmentRequestsPage() {
   const staleCount = items.filter((item) => isStalePendingReview(item)).length;
   const duplicateCount = items.filter((item) => item.possibleDuplicate).length;
   const failedSyncCount = items.filter((item) => hasCalendarIssue(item)).length;
-  const unsyncedCount = items.filter(
-    (item) => item.status === "CONFIRMED" && item.calendarSyncStatus === "NOT_SYNCED"
-  ).length;
   const confirmedTodayCount = items.filter((item) => isConfirmedToday(item)).length;
   const visibleItems = useMemo(() => {
     const filtered = items.filter((item) => {
@@ -270,189 +431,189 @@ export function AppointmentRequestsPage() {
     activeIndex >= 0 && activeIndex < visibleItems.length - 1 ? visibleItems[activeIndex + 1]?.id : null;
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        eyebrow="Queue"
-        title="Appointment Requests"
-        description="Review incoming appointment intake, confirm clinic-ready slots, and monitor calendar sync health from one operational workspace."
-      />
-
-      <div className="grid gap-4 xl:grid-cols-6">
-        {[
-          { label: "Overdue", value: overdueCount, tone: "danger" },
-          { label: "Pending review", value: pendingCount, tone: "default" },
-          { label: "Stale review", value: staleCount, tone: "warning" },
-          { label: "Urgent", value: urgentCount, tone: "danger" },
-          { label: "Possible duplicates", value: duplicateCount, tone: "warning" },
-          { label: "Sync failures", value: failedSyncCount, tone: "danger" }
-        ].map((item) => (
-          <Card key={item.label}>
-            <CardContent className="py-5">
-              <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
-              <div className="mt-3 flex items-center gap-3">
-                <p className="text-3xl font-semibold text-foreground">{item.value}</p>
-                <Badge
-                  variant={item.tone === "danger" ? "danger" : item.tone === "warning" ? "warning" : item.tone === "success" ? "success" : "default"}
-                >
-                  Live
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <CardTitle>Queue controls</CardTitle>
-            {user?.role === "ADMIN" ? (
-              <Button
-                variant="outline"
-                onClick={() => overdueSweepMutation.mutate()}
-                disabled={overdueSweepMutation.isPending}
-              >
-                {overdueSweepMutation.isPending ? (
-                  <>
-                    <LoaderCircle className="h-4 w-4 animate-spin" />
-                    Running overdue sweep...
-                  </>
-                ) : (
-                  "Run overdue sweep"
-                )}
-              </Button>
-            ) : null}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: "overdue", label: "Overdue" },
-              { key: "needs-review", label: "Needs Review" },
-              { key: "scheduled", label: "Scheduled" },
-              { key: "closed", label: "Closed" },
-              { key: "all", label: "All" }
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => updateUrl({ tab: tab.key })}
-                className={cn(
-                  "rounded-full border px-4 py-2 text-sm font-semibold transition",
-                  queueTab === tab.key
-                    ? "border-primary/20 bg-primary text-primary-foreground"
-                    : "border-border bg-white text-muted-foreground hover:bg-secondary"
-                )}
-              >
-                {tab.label}{" "}
-                <span className={cn("ml-1", queueTab === tab.key ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                  {tabCounts[tab.key as AppointmentQueueTab]}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className="grid gap-3 lg:grid-cols-[2fr_1fr_1fr_auto]">
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-                className="pl-11"
-                placeholder="Search by owner, pet, phone, or email"
-              />
-            </div>
-            <Input
-              type="date"
-              value={dateFrom}
-              onChange={(event) => updateUrl({ dateFrom: event.target.value || null })}
-            />
-            <Input
-              type="date"
-              value={dateTo}
-              onChange={(event) => updateUrl({ dateTo: event.target.value || null })}
-            />
-            <Button
-              variant="ghost"
-              className="justify-self-start text-muted-foreground"
-              onClick={() => {
-                setSearchInput("");
-                navigate({ pathname: appointmentId ? `/appointments/${appointmentId}` : "/appointments", search: "" }, { replace: true });
-              }}
-            >
-              Reset
-            </Button>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: "urgent", label: "Urgent only", active: urgentOnly },
-              { key: "stale", label: "Requested slots passed", active: staleOnly },
-              { key: "duplicate", label: "Possible duplicates", active: duplicateOnly },
-              { key: "sync", label: "Sync issues", active: syncIssuesOnly },
-              { key: "confirmedToday", label: "Confirmed today", active: confirmedTodayOnly }
-            ].map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => updateUrl({ [item.key]: item.active ? null : "1" })}
-                className={cn(
-                  "rounded-full border px-4 py-2 text-sm font-semibold transition",
-                  item.active
-                    ? "border-primary/20 bg-primary/10 text-primary"
-                    : "border-border bg-white text-muted-foreground hover:bg-secondary"
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3">
+    <div className="space-y-5">
+      <section className="relative overflow-hidden rounded-[28px] border border-white/80 bg-white px-8 py-8 shadow-[0_24px_80px_rgba(16,46,36,0.07)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(234,247,240,0.95),transparent_32%)]" />
+        <div className="relative grid gap-6 lg:grid-cols-[1fr_340px] lg:items-center">
           <div>
-            <CardTitle>Operational queue</CardTitle>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="text-sm font-black uppercase tracking-[0.24em] text-[#087C48]">Queue</p>
+            <h1 className="mt-3 text-4xl font-black leading-tight tracking-[-0.04em] text-[#102E24] md:text-5xl">
+              Appointment Requests
+            </h1>
+            <p className="mt-4 max-w-3xl text-base font-medium leading-7 text-[#5F756C]">
+              Review incoming appointment intake, confirm clinic-ready slots, and monitor calendar sync health from one
+              operational workspace.
+            </p>
+          </div>
+          <img
+            src={heroOrangeCatIllustration}
+            alt=""
+            aria-hidden="true"
+            className="hidden w-full max-w-[330px] justify-self-end lg:block"
+          />
+        </div>
+      </section>
+
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+        <MetricCard label="Overdue" value={overdueCount} icon={Clock3} tone="red" />
+        <MetricCard label="Pending review" value={pendingCount} icon={FileText} tone="green" />
+        <MetricCard label="Stale review" value={staleCount} icon={Hourglass} tone="amber" />
+        <MetricCard label="Urgent" value={urgentCount} icon={BellRing} tone="blue" />
+        <MetricCard label="Possible duplicates" value={duplicateCount} icon={Copy} tone="purple" />
+        <MetricCard label="Sync failures" value={failedSyncCount} icon={RefreshCw} tone="pink" />
+      </section>
+
+      <section className="rounded-[24px] border border-white/80 bg-white p-6 shadow-[0_24px_80px_rgba(16,46,36,0.07)]">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-black tracking-[-0.03em] text-[#102E24]">Queue controls</h2>
+          {user?.role === "ADMIN" ? (
+            <Button
+              variant="outline"
+              onClick={() => overdueSweepMutation.mutate()}
+              disabled={overdueSweepMutation.isPending}
+              className="h-12 rounded-2xl border-[#DDEBE2] px-5 text-[#087C48]"
+            >
+              {overdueSweepMutation.isPending ? (
+                <>
+                  <LoaderCircle className="h-4 w-4 animate-spin" />
+                  Running overdue sweep...
+                </>
+              ) : (
+                <>
+                  <Zap className="h-4 w-4" />
+                  Run overdue sweep
+                </>
+              )}
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {[
+            { key: "overdue", label: "Overdue" },
+            { key: "needs-review", label: "Needs Review" },
+            { key: "scheduled", label: "Scheduled" },
+            { key: "closed", label: "Closed" },
+            { key: "all", label: "All" }
+          ].map((tab) => (
+            <FilterPill
+              key={tab.key}
+              active={queueTab === tab.key}
+              onClick={() => updateUrl({ tab: tab.key })}
+            >
+              {tab.label} {tabCounts[tab.key as AppointmentQueueTab]}
+            </FilterPill>
+          ))}
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-[2fr_0.85fr_0.85fr_auto]">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#5F756C]" />
+            <Input
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              className="h-12 rounded-2xl border-[#DDEBE2] bg-white pl-12 text-[#102E24]"
+              placeholder="Search by owner, pet, phone, or email"
+            />
+          </div>
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(event) => updateUrl({ dateFrom: event.target.value || null })}
+            className="h-12 rounded-2xl border-[#DDEBE2] bg-white"
+          />
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(event) => updateUrl({ dateTo: event.target.value || null })}
+            className="h-12 rounded-2xl border-[#DDEBE2] bg-white"
+          />
+          <Button
+            variant="ghost"
+            className="h-12 justify-self-start rounded-2xl px-5 font-extrabold text-[#087C48]"
+            onClick={() => {
+              setSearchInput("");
+              navigate({ pathname: appointmentId ? `/appointments/${appointmentId}` : "/appointments", search: "" }, { replace: true });
+            }}
+          >
+            Reset
+          </Button>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          <FilterPill active={urgentOnly} icon={AlertTriangle} onClick={() => updateUrl({ urgent: urgentOnly ? null : "1" })}>
+            Urgent only
+          </FilterPill>
+          <FilterPill active={staleOnly} icon={Clock3} onClick={() => updateUrl({ stale: staleOnly ? null : "1" })}>
+            Requested slots passed
+          </FilterPill>
+          <FilterPill active={duplicateOnly} icon={Copy} onClick={() => updateUrl({ duplicate: duplicateOnly ? null : "1" })}>
+            Possible duplicates
+          </FilterPill>
+          <FilterPill active={syncIssuesOnly} icon={RefreshCw} onClick={() => updateUrl({ sync: syncIssuesOnly ? null : "1" })}>
+            Sync issues
+          </FilterPill>
+          <FilterPill
+            active={confirmedTodayOnly}
+            icon={CalendarDays}
+            onClick={() => updateUrl({ confirmedToday: confirmedTodayOnly ? null : "1" })}
+          >
+            Confirmed today {confirmedTodayCount}
+          </FilterPill>
+        </div>
+      </section>
+
+      <section className="rounded-[24px] border border-white/80 bg-white p-6 shadow-[0_24px_80px_rgba(16,46,36,0.07)]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-black tracking-[-0.03em] text-[#102E24]">Operational queue</h2>
+            <p className="mt-1 text-sm font-medium leading-6 text-[#5F756C]">
               Intake review, scheduling, and sync follow-up stay in one list with URL-persisted state.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="default" className="bg-secondary/80">
-              {visibleItems.length} shown
-            </Badge>
-            {queueTab === "scheduled" ? (
-              <CalendarSyncBadge
-                status={failedSyncCount > 0 ? "FAILED" : unsyncedCount > 0 ? "NOT_SYNCED" : "SYNCED"}
-              />
-            ) : null}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+          <span className="rounded-full bg-[#EAF7F0] px-4 py-2 text-sm font-extrabold text-[#5F756C]">
+            {visibleItems.length} shown
+          </span>
+        </div>
+
+        <div className="mt-5">
           {requestsQuery.isLoading ? (
-            Array.from({ length: 5 }).map((_, index) => <Skeleton key={index} className="h-28 w-full rounded-2xl" />)
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <Skeleton key={index} className="h-24 w-full rounded-2xl" />
+              ))}
+            </div>
           ) : requestsQuery.isError ? (
-            <ErrorState
-              title="Could not load appointment requests"
-              description={getErrorMessage(requestsQuery.error)}
-              onRetry={() => requestsQuery.refetch()}
-            />
+            <div className="rounded-[24px] border border-[#DDEBE2] bg-[#FAFCFA] p-8">
+              <p className="text-lg font-black text-[#102E24]">Could not load appointment requests</p>
+              <p className="mt-2 text-sm text-[#5F756C]">{getErrorMessage(requestsQuery.error)}</p>
+              <Button className="mt-4" onClick={() => requestsQuery.refetch()}>
+                Retry
+              </Button>
+            </div>
           ) : visibleItems.length === 0 ? (
-            <EmptyState
-              title="No appointment requests match this operational view"
-              description="Try switching the queue tab, clearing the quick filters, or widening the date range."
-              actionLabel="Clear queue filters"
-              onAction={() => {
-                setSearchInput("");
-                navigate({ pathname: appointmentId ? `/appointments/${appointmentId}` : "/appointments", search: "" }, { replace: true });
-              }}
-            />
+            <div className="flex flex-col items-center justify-center rounded-[24px] border border-dashed border-[#DDEBE2] bg-[#FAFCFA] px-6 py-12 text-center">
+              <img src={emptyFilesStateIllustration} alt="" aria-hidden="true" className="w-40" />
+              <h3 className="mt-4 text-xl font-black text-[#102E24]">No appointment requests found</h3>
+              <p className="mt-2 max-w-md text-sm leading-6 text-[#5F756C]">
+                Try clearing filters or checking another queue.
+              </p>
+              <Button
+                variant="outline"
+                className="mt-5 rounded-2xl border-[#DDEBE2]"
+                onClick={() => {
+                  setSearchInput("");
+                  navigate({ pathname: appointmentId ? `/appointments/${appointmentId}` : "/appointments", search: "" }, { replace: true });
+                }}
+              >
+                Clear queue filters
+              </Button>
+            </div>
           ) : (
             <>
-              <div className="overflow-hidden rounded-3xl border border-border">
+              <div className="overflow-hidden rounded-[24px] border border-[#DDEBE2]">
                 <div className="max-h-[860px] overflow-y-auto">
-                  <div className="sticky top-0 z-10 hidden grid-cols-[1fr_1.35fr_1.2fr_0.95fr_1fr_0.65fr] gap-4 border-b border-border bg-secondary/95 px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground backdrop-blur xl:grid">
+                  <div className="sticky top-0 z-10 hidden grid-cols-[1.15fr_1.55fr_1.45fr_1fr_1.25fr_0.75fr] gap-4 border-b border-[#DDEBE2] bg-[#EAF7F0]/95 px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-[#5F756C] backdrop-blur xl:grid">
                     <div>Priority</div>
                     <div>Patient / Owner</div>
                     <div>Requested / Confirmed Time</div>
@@ -460,11 +621,8 @@ export function AppointmentRequestsPage() {
                     <div>Status / Sync</div>
                     <div>Review</div>
                   </div>
-                  <div className="divide-y divide-border">
+                  <div className="divide-y divide-[#DDEBE2]">
                     {visibleItems.map((item) => {
-                      const urgent = isUrgentAppointment(item);
-                      const stale = isStalePendingReview(item);
-                      const syncIssue = hasCalendarIssue(item);
                       const timingLabel =
                         (item.status === "CONFIRMED" || item.status === "OVERDUE") && item.confirmedStartAt
                           ? formatDateTime(item.confirmedStartAt)
@@ -484,44 +642,51 @@ export function AppointmentRequestsPage() {
                               search: location.search
                             })
                           }
-                          className="grid w-full gap-4 bg-white px-5 py-4 text-left transition hover:bg-secondary/30 focus-visible:bg-secondary/35 focus-visible:outline-none xl:grid-cols-[1fr_1.35fr_1.2fr_0.95fr_1fr_0.65fr]"
+                          className="grid w-full gap-4 bg-white px-5 py-5 text-left transition hover:bg-[#FAFCFA] focus-visible:bg-[#F5FBF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#087C48] xl:grid-cols-[1.15fr_1.55fr_1.45fr_1fr_1.25fr_0.75fr]"
                         >
-                          <div>
-                            <AppointmentPriorityBadges
-                              urgent={urgent}
-                              stale={stale}
-                              duplicate={item.possibleDuplicate}
-                              syncIssue={syncIssue}
-                            />
+                          <div className="flex items-start">
+                            <PriorityPill item={item} />
+                          </div>
+                          <div className="flex min-w-0 items-start gap-3">
+                            <PetAvatar item={item} />
+                            <div className="min-w-0">
+                              <p className="truncate text-base font-black text-[#102E24]">{item.pet.name}</p>
+                              <p className="mt-1 truncate text-sm font-semibold text-[#102E24]">
+                                {item.owner.firstName} {item.owner.lastName}
+                              </p>
+                              <p className="mt-1 text-sm font-medium text-[#5F756C]">{item.owner.phoneNumber}</p>
+                            </div>
                           </div>
                           <div>
-                            <p className="font-semibold text-foreground">{item.pet.name}</p>
-                            <p className="mt-1 text-sm font-medium text-foreground">
-                              {item.owner.firstName} {item.owner.lastName}
-                            </p>
-                            <p className="mt-1 text-sm text-muted-foreground">{item.owner.phoneNumber}</p>
-                          </div>
-                          <div>
-                            <p className="line-clamp-2 text-sm font-medium text-foreground">
+                            <p className="text-sm font-black leading-6 text-[#102E24]">
                               {timingLabel === "No preferences captured" ? "No preferred time captured" : timingLabel}
                             </p>
-                            <p className="mt-1 text-sm text-muted-foreground">{timingMeta}</p>
+                            <p className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-[#5F756C]">
+                              <Globe2 className="h-4 w-4" />
+                              {timingMeta}
+                            </p>
                           </div>
-                          <div className="text-sm text-foreground">{formatVisitType(item.visitType)}</div>
+                          <div className="flex items-center gap-2 text-sm font-extrabold text-[#102E24]">
+                            <Stethoscope className="h-5 w-5 text-[#7B3FD6]" />
+                            {formatVisitType(item.visitType)}
+                          </div>
                           <div className="space-y-2">
                             <div className="flex flex-wrap gap-2">
-                              <StatusBadge status={item.status} />
-                              <CalendarSyncBadge status={item.calendarSyncStatus} />
+                              <StatusPill status={item.status} />
+                              <SyncPill status={item.calendarSyncStatus} />
                             </div>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm font-medium text-[#5F756C]">
                               {item.status === "CONFIRMED" || item.status === "OVERDUE"
                                 ? formatRelativeTime(item.confirmedEndAt ?? item.confirmedStartAt)
                                 : formatRelativeTime(item.createdAt)}
                             </p>
                           </div>
                           <div className="flex items-center justify-between gap-2 xl:justify-end">
-                            <span className="text-sm font-semibold text-primary">Review</span>
-                            <ChevronRight className="h-4 w-4 text-primary" />
+                            <span className="inline-flex items-center gap-2 text-sm font-black text-[#087C48]">
+                              Review
+                              <ChevronRight className="h-4 w-4" />
+                            </span>
+                            <MoreVertical className="h-5 w-5 text-[#5F756C]" />
                           </div>
                         </button>
                       );
@@ -531,9 +696,10 @@ export function AppointmentRequestsPage() {
               </div>
 
               {requestsQuery.hasNextPage ? (
-                <div className="flex justify-center">
+                <div className="flex justify-center pt-5">
                   <Button
                     variant="outline"
+                    className="rounded-2xl border-[#DDEBE2]"
                     onClick={() => requestsQuery.fetchNextPage()}
                     disabled={requestsQuery.isFetchingNextPage}
                   >
@@ -543,8 +709,8 @@ export function AppointmentRequestsPage() {
               ) : null}
             </>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <AppointmentDetailDrawer
         appointmentId={appointmentId ?? null}

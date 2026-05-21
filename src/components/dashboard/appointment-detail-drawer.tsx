@@ -782,7 +782,7 @@ export function AppointmentDetailDrawer({
                   </div>
                   <div className="min-w-0 space-y-3">
                     <div className="space-y-1">
-                      <DialogTitle className="truncate font-serif text-[30px] font-bold leading-tight text-[#102E24]">
+                      <DialogTitle className="truncate text-[30px] font-bold leading-tight text-[#102E24]">
                         {request.pet.name}
                       </DialogTitle>
                       <DialogDescription className="flex flex-wrap items-center gap-2 text-sm font-medium text-[#587267]">
