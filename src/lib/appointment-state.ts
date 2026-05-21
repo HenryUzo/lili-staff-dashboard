@@ -24,9 +24,19 @@ function parseDateTimeInputParts(value: string) {
   };
 }
 
+function getSafeTimeZone(timeZone: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone }).format(new Date());
+    return timeZone;
+  } catch {
+    return "Africa/Lagos";
+  }
+}
+
 function getTimeZoneOffsetMs(date: Date, timeZone: string) {
+  const effectiveTimeZone = getSafeTimeZone(timeZone);
   const formatter = new Intl.DateTimeFormat("en-US", {
-    timeZone,
+    timeZone: effectiveTimeZone,
     hour12: false,
     year: "numeric",
     month: "2-digit",
@@ -75,7 +85,7 @@ function toUtcIsoFromTimeZone(value: string, timeZone: string) {
   return zonedDate.toISOString();
 }
 
-function normalizeSelectionDateKey(value: string) {
+export function normalizeSelectionDateKey(value: string) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return value;
   }
@@ -89,9 +99,10 @@ function normalizeSelectionDateKey(value: string) {
   return parsed.toISOString().slice(0, 10);
 }
 
-function toSelectionInstant(date: string, timeSlot: string, timeZone: string) {
+export function getPreferredSelectionInstant(date: string, timeSlot: string, timeZone: string) {
   const normalizedTime = timeSlot.trim();
   const normalizedDate = normalizeSelectionDateKey(date);
+  const effectiveTimeZone = getSafeTimeZone(timeZone);
 
   if (!normalizedDate || !/^\d{1,2}:\d{2}$/.test(normalizedTime)) {
     return null;
@@ -99,7 +110,7 @@ function toSelectionInstant(date: string, timeSlot: string, timeZone: string) {
 
   const [hours, minutes] = normalizedTime.split(":");
   const localValue = `${normalizedDate}T${hours.padStart(2, "0")}:${minutes}`;
-  const isoValue = toUtcIsoFromTimeZone(localValue, timeZone);
+  const isoValue = toUtcIsoFromTimeZone(localValue, effectiveTimeZone);
 
   if (!isoValue) {
     return null;
@@ -107,6 +118,27 @@ function toSelectionInstant(date: string, timeSlot: string, timeZone: string) {
 
   const instant = new Date(isoValue);
   return Number.isNaN(instant.getTime()) ? null : instant;
+}
+
+export function isPastPreferredSelection(
+  date: string,
+  timeSlot: string,
+  timeZone: string,
+  now = new Date()
+) {
+  const instant = getPreferredSelectionInstant(date, timeSlot, timeZone);
+  return Boolean(instant && instant.getTime() <= now.getTime());
+}
+
+export function hasAnyFuturePreferredSelection({
+  preferredSelections,
+  timezone
+}: Pick<AppointmentWithPreferences, "preferredSelections" | "timezone">) {
+  const effectiveTimeZone = timezone || "Africa/Lagos";
+
+  return preferredSelections.some((selection) =>
+    selection.timeSlots.some((timeSlot) => !isPastPreferredSelection(selection.date, timeSlot, effectiveTimeZone))
+  );
 }
 
 export function getLatestPreferredSelectionAt({
@@ -118,7 +150,7 @@ export function getLatestPreferredSelectionAt({
 
   for (const selection of preferredSelections) {
     for (const timeSlot of selection.timeSlots) {
-      const instant = toSelectionInstant(selection.date, timeSlot, effectiveTimeZone);
+      const instant = getPreferredSelectionInstant(selection.date, timeSlot, effectiveTimeZone);
 
       if (!instant) {
         continue;
@@ -138,6 +170,19 @@ export function hasStalePendingReviewRequest(item: AppointmentWithPreferences) {
     return false;
   }
 
-  const latestPreferredSelection = getLatestPreferredSelectionAt(item);
-  return Boolean(latestPreferredSelection && latestPreferredSelection.getTime() < Date.now());
+  if (!hasAnyFuturePreferredSelection(item)) {
+    const latestPreferredSelection = getLatestPreferredSelectionAt(item);
+    return Boolean(latestPreferredSelection && latestPreferredSelection.getTime() < Date.now());
+  }
+
+  return false;
+}
+
+export function hasPastConfirmedStart(value?: string | null) {
+  if (!value) {
+    return false;
+  }
+
+  const instant = new Date(value);
+  return !Number.isNaN(instant.getTime()) && instant.getTime() <= Date.now();
 }

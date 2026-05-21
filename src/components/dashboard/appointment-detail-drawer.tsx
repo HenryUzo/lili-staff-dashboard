@@ -46,7 +46,12 @@ import {
   formatVisitType,
   toDateTimeLocalValue
 } from "@/lib/format";
-import { hasStalePendingReviewRequest } from "@/lib/appointment-state";
+import {
+  hasAnyFuturePreferredSelection,
+  hasPastConfirmedStart,
+  hasStalePendingReviewRequest,
+  isPastPreferredSelection
+} from "@/lib/appointment-state";
 import { cn } from "@/lib/utils";
 import type {
   AppointmentPreferredSelection,
@@ -409,6 +414,7 @@ export function AppointmentDetailDrawer({
     confirmedEndInput && confirmedTimezone.trim()
       ? toUtcIsoFromTimeZone(confirmedEndInput, confirmedTimezone.trim())
       : null;
+  const confirmedStartInPast = hasPastConfirmedStart(confirmedStartIso);
   const confirmedSlotIsValid =
     !requiresConfirmedSlot ||
     (confirmedStartComparable !== null &&
@@ -416,17 +422,41 @@ export function AppointmentDetailDrawer({
       confirmedEndComparable > confirmedStartComparable &&
       Boolean(confirmedStartIso) &&
       Boolean(confirmedEndIso) &&
-      Boolean(confirmedTimezone.trim()));
+      Boolean(confirmedTimezone.trim()) &&
+      !confirmedStartInPast);
   const quickSelections = useMemo(
     () => flattenPreferredSelections(request?.preferredSelections ?? []),
     [request?.preferredSelections]
   );
+  const availableQuickSelections = useMemo(
+    () =>
+      quickSelections.filter((selection) =>
+        !isPastPreferredSelection(
+          selection.date,
+          selection.timeSlot,
+          request?.timezone || confirmedTimezone || "Africa/Lagos"
+        )
+      ),
+    [confirmedTimezone, quickSelections, request?.timezone]
+  );
   const selectedQuickSelection = useMemo(
-    () => quickSelections.find((selection) => selection.startValue === confirmedStartInput) ?? null,
-    [confirmedStartInput, quickSelections]
+    () => availableQuickSelections.find((selection) => selection.startValue === confirmedStartInput) ?? null,
+    [availableQuickSelections, confirmedStartInput]
   );
   const hasRequestedSelections = quickSelections.length > 0;
-  const shouldUseRequestedSlotFlow = requiresConfirmedSlot && hasRequestedSelections && !manualOverrideEnabled;
+  const hasFutureRequestedSelections = request
+    ? hasAnyFuturePreferredSelection({
+        preferredSelections: request.preferredSelections,
+        timezone: request.timezone
+      })
+    : false;
+  const staleConfirmationBlocked =
+    request?.status === "PENDING_REVIEW" &&
+    selectedStatus === "CONFIRMED" &&
+    hasRequestedSelections &&
+    !hasFutureRequestedSelections;
+  const shouldUseRequestedSlotFlow =
+    requiresConfirmedSlot && hasFutureRequestedSelections && !manualOverrideEnabled && !staleConfirmationBlocked;
   const statusChanged = Boolean(nextStatus && request && nextStatus !== request.status);
   const confirmedSlotChanged =
     Boolean(request) &&
@@ -437,6 +467,7 @@ export function AppointmentDetailDrawer({
   const canSave =
     Boolean(request) &&
     confirmedSlotIsValid &&
+    !staleConfirmationBlocked &&
     (statusChanged || confirmedSlotChanged) &&
     !updateStatusMutation.isPending;
   const responseDeadlineIsValid =
@@ -461,7 +492,10 @@ export function AppointmentDetailDrawer({
   const isStalePendingReview = request ? hasStalePendingReviewRequest(request) : false;
   const hasSyncIssue = request?.calendarSyncStatus === "FAILED";
   const syncReadyAfterConfirm =
-    selectedStatus === "CONFIRMED" && confirmedSlotIsValid && request?.calendarSyncStatus !== "SYNCED";
+    selectedStatus === "CONFIRMED" &&
+    confirmedSlotIsValid &&
+    !staleConfirmationBlocked &&
+    request?.calendarSyncStatus !== "SYNCED";
   const primaryActionLabel =
     selectedStatus === "CONFIRMED"
       ? request?.status === "CONFIRMED"
@@ -472,6 +506,10 @@ export function AppointmentDetailDrawer({
         : `Save ${formatStatus(selectedStatus as AppointmentRequestStatus).toLowerCase()}`;
 
   function applyQuickSelection(date: string, timeSlot: string) {
+    if (isPastPreferredSelection(date, timeSlot, request?.timezone || confirmedTimezone || "Africa/Lagos")) {
+      return;
+    }
+
     const startValue = createQuickSelectionValue(date, timeSlot);
 
     if (!startValue) {
@@ -604,7 +642,15 @@ export function AppointmentDetailDrawer({
                             }
                           >
                             {statusOptions.map((status) => (
-                              <option key={status} value={status}>
+                              <option
+                                key={status}
+                                value={status}
+                                disabled={
+                                  status === "CONFIRMED" &&
+                                  request.status === "PENDING_REVIEW" &&
+                                  isStalePendingReview
+                                }
+                              >
                                 {formatStatus(status)}
                               </option>
                             ))}
@@ -745,6 +791,11 @@ export function AppointmentDetailDrawer({
                                         selection.date,
                                         timeSlot
                                       );
+                                      const isPastSlot = isPastPreferredSelection(
+                                        selection.date,
+                                        timeSlot,
+                                        request.timezone || confirmedTimezone || "Africa/Lagos"
+                                      );
                                       const isSelected =
                                         Boolean(quickStartValue) && quickStartValue === confirmedStartInput;
 
@@ -753,10 +804,12 @@ export function AppointmentDetailDrawer({
                                           key={timeSlot}
                                           type="button"
                                           onClick={() => applyQuickSelection(selection.date, timeSlot)}
-                                          disabled={!quickStartValue}
+                                          disabled={!quickStartValue || isPastSlot}
                                           className={cn(
                                             "rounded-full border px-3 py-1 text-xs font-semibold transition",
-                                            isSelected
+                                            isPastSlot
+                                              ? "cursor-not-allowed border-border bg-secondary text-muted-foreground/70"
+                                              : isSelected
                                               ? "border-primary bg-primary text-primary-foreground"
                                               : quickStartValue
                                                 ? "border-border bg-accent text-accent-foreground hover:bg-accent/80"
@@ -785,26 +838,41 @@ export function AppointmentDetailDrawer({
                                 Confirmed slot
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                {hasRequestedSelections
+                                {staleConfirmationBlocked
+                                  ? "All requested times have already passed. This request needs outreach instead of confirmation."
+                                  : hasRequestedSelections
                                   ? "Select one of the applicant's preferred times first. Only use manual override when needed."
                                   : "No preferred slots were captured, so confirm manually."}
                               </p>
                             </div>
 
-                            {hasRequestedSelections ? (
+                            {hasFutureRequestedSelections ? (
                               <div className="space-y-3 rounded-2xl border border-border bg-secondary/10 p-4">
                                 <p className="text-sm font-semibold text-foreground">
                                   Available requested times
                                 </p>
                                 <div className="space-y-3">
-                                  {request.preferredSelections.map((selection) => (
+                                  {request.preferredSelections.map((selection) => {
+                                    const availableTimeSlots = selection.timeSlots.filter((timeSlot) =>
+                                      !isPastPreferredSelection(
+                                        selection.date,
+                                        timeSlot,
+                                        request.timezone || confirmedTimezone || "Africa/Lagos"
+                                      )
+                                    );
+
+                                    if (availableTimeSlots.length === 0) {
+                                      return null;
+                                    }
+
+                                    return (
                                     <div key={`confirmed-${selection.date}`}>
                                       <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                                         <CalendarClock className="h-4 w-4 text-primary" />
                                         {formatDateOnly(selection.date, selection.date)}
                                       </div>
                                       <div className="mt-2 flex flex-wrap gap-2">
-                                        {selection.timeSlots.map((timeSlot) => {
+                                        {availableTimeSlots.map((timeSlot) => {
                                           const quickStartValue = createQuickSelectionValue(
                                             selection.date,
                                             timeSlot
@@ -836,12 +904,17 @@ export function AppointmentDetailDrawer({
                                         })}
                                       </div>
                                     </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               </div>
                             ) : null}
 
-                            {shouldUseRequestedSlotFlow ? (
+                            {staleConfirmationBlocked ? (
+                              <Alert className="border-destructive/30 bg-destructive/10 text-destructive">
+                                This request can no longer be confirmed because all requested times have passed.
+                              </Alert>
+                            ) : shouldUseRequestedSlotFlow ? (
                               <>
                                 {selectedQuickSelection ? (
                                   <div className="rounded-2xl border border-primary/15 bg-primary/5 p-4">
@@ -874,7 +947,7 @@ export function AppointmentDetailDrawer({
                               </>
                             ) : (
                               <>
-                                {hasRequestedSelections ? (
+                                {hasFutureRequestedSelections ? (
                                   <Alert className="border-warning/30 bg-warning/10 text-warning">
                                     You are overriding the applicant's preferred times. Confirm manually only if no requested slot works.
                                   </Alert>
@@ -950,7 +1023,9 @@ export function AppointmentDetailDrawer({
 
                                 {!confirmedSlotIsValid ? (
                                   <Alert className="border-destructive/30 bg-destructive/10 text-destructive">
-                                    Add a valid start time, end time, and timezone before confirming.
+                                    {confirmedStartInPast
+                                      ? "Confirmed appointment time must be in the future."
+                                      : "Add a valid start time, end time, and timezone before confirming."}
                                   </Alert>
                                 ) : null}
                               </>
