@@ -6,10 +6,10 @@ import { Topbar } from "@/components/dashboard/topbar";
 export function AppShell() {
   return (
     <NotificationProvider>
-      <div className="min-h-screen bg-[#F5FBF7] p-3 text-[#102E24] sm:p-4">
-        <div className="mx-auto flex min-h-[calc(100vh-24px)] max-w-[1680px] gap-4 lg:gap-5">
+      <div className="min-h-screen bg-transparent px-4 py-4 pb-6 text-[#102E24] sm:px-6 sm:pb-6">
+        <div className="mx-auto flex min-h-[calc(100vh-32px)] max-w-[1440px] gap-6">
           <Sidebar />
-          <main className="flex min-w-0 flex-1 flex-col gap-4 lg:gap-5">
+          <main className="flex min-w-0 flex-1 flex-col gap-6">
             <Topbar />
             <div className="flex-1">
               <Outlet />

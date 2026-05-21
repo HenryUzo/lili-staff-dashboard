@@ -160,16 +160,16 @@ function MetricCard({
   };
 
   return (
-    <div className="rounded-[20px] border border-[#DDEBE2] bg-white p-5 shadow-[0_16px_45px_rgba(16,46,36,0.06)]">
+    <div className="min-h-[110px] rounded-[22px] border border-[rgba(221,235,226,0.88)] bg-[rgba(255,255,255,0.96)] p-[22px] shadow-soft-card">
       <div className="flex items-center gap-4">
-        <div className={cn("flex h-14 w-14 shrink-0 items-center justify-center rounded-full", tones[tone])}>
-          <Icon className="h-7 w-7" />
+        <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", tones[tone])}>
+          <Icon className="h-6 w-6" />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-sm font-extrabold text-[#102E24]">{label}</p>
+          <p className="truncate text-[13px] font-extrabold text-[#263D35]">{label}</p>
           <div className="mt-2 flex items-center gap-3">
-            <p className="text-3xl font-black leading-none text-[#102E24]">{value}</p>
-            <span className={cn("rounded-full px-2.5 py-1 text-xs font-extrabold", tones[tone])}>Live</span>
+            <p className="text-[32px] font-black leading-none text-[#102E24]">{value}</p>
+            <span className={cn("rounded-full px-2 py-1 text-[11px] font-extrabold", tones[tone])}>Live</span>
           </div>
         </div>
       </div>
@@ -193,7 +193,7 @@ function FilterPill({
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex h-11 items-center gap-2 rounded-full border px-4 text-sm font-extrabold transition",
+        "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[13px] font-bold transition",
         active
           ? "border-[#087C48] bg-[#087C48] text-white shadow-[0_10px_24px_rgba(8,124,72,0.18)]"
           : "border-[#DDEBE2] bg-white text-[#5F756C] hover:border-[#BFD8CA] hover:bg-[#F5FBF7] hover:text-[#087C48]"
@@ -212,7 +212,7 @@ function PriorityPill({ item }: { item: AppointmentRequestListItem }) {
 
   if (stale) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-2xl bg-[#FFF3D9] px-4 py-3 text-xs font-extrabold leading-4 text-[#A46600]">
+      <span className="inline-flex items-center gap-2 rounded-[14px] bg-[#FFF3D9] px-3 py-2.5 text-xs font-black leading-[1.15] text-[#A46600]">
         <Clock3 className="h-4 w-4" />
         Requested slots passed
       </span>
@@ -221,7 +221,7 @@ function PriorityPill({ item }: { item: AppointmentRequestListItem }) {
 
   if (item.status === "OVERDUE") {
     return (
-      <span className="inline-flex items-center gap-2 rounded-2xl bg-[#FFE8E8] px-4 py-3 text-xs font-extrabold text-[#D93030]">
+      <span className="inline-flex items-center gap-2 rounded-[14px] bg-[#FFE8E8] px-3 py-2.5 text-xs font-black leading-[1.15] text-[#D93030]">
         <Clock3 className="h-4 w-4" />
         Overdue
       </span>
@@ -230,7 +230,7 @@ function PriorityPill({ item }: { item: AppointmentRequestListItem }) {
 
   if (urgent) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-2xl bg-[#EAF3FF] px-4 py-3 text-xs font-extrabold text-[#2673D9]">
+      <span className="inline-flex items-center gap-2 rounded-[14px] bg-[#EAF3FF] px-3 py-2.5 text-xs font-black leading-[1.15] text-[#2673D9]">
         <ShieldAlert className="h-4 w-4" />
         Urgent
       </span>
@@ -239,7 +239,7 @@ function PriorityPill({ item }: { item: AppointmentRequestListItem }) {
 
   if (syncIssue) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-2xl bg-[#FFEAF4] px-4 py-3 text-xs font-extrabold text-[#D93A85]">
+      <span className="inline-flex items-center gap-2 rounded-[14px] bg-[#FFEAF4] px-3 py-2.5 text-xs font-black leading-[1.15] text-[#D93A85]">
         <RefreshCw className="h-4 w-4" />
         Sync issue
       </span>
@@ -248,7 +248,7 @@ function PriorityPill({ item }: { item: AppointmentRequestListItem }) {
 
   if (item.possibleDuplicate) {
     return (
-      <span className="inline-flex items-center gap-2 rounded-2xl bg-[#F1E8FF] px-4 py-3 text-xs font-extrabold text-[#7B3FD6]">
+      <span className="inline-flex items-center gap-2 rounded-[14px] bg-[#F1E8FF] px-3 py-2.5 text-xs font-black leading-[1.15] text-[#7B3FD6]">
         <Copy className="h-4 w-4" />
         Possible duplicate
       </span>
@@ -256,7 +256,7 @@ function PriorityPill({ item }: { item: AppointmentRequestListItem }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-2 rounded-2xl bg-[#EAF7F0] px-4 py-3 text-xs font-extrabold text-[#5F756C]">
+    <span className="inline-flex items-center gap-2 rounded-[14px] bg-[#EAF7F0] px-3 py-2.5 text-xs font-black leading-[1.15] text-[#5F756C]">
       <Clock3 className="h-4 w-4" />
       Routine
     </span>
@@ -271,7 +271,7 @@ function StatusPill({ status }: { status: AppointmentRequestStatus }) {
         ? "bg-[#FFF3D9] text-[#A46600]"
         : "bg-[#FFE8E8] text-[#D93030]";
 
-  return <span className={cn("inline-flex rounded-full px-3 py-1 text-xs font-extrabold", tone)}>{formatStatus(status)}</span>;
+  return <span className={cn("inline-flex rounded-full px-[9px] py-[5px] text-[11px] font-black", tone)}>{formatStatus(status)}</span>;
 }
 
 function SyncPill({ status }: { status: CalendarSyncStatus }) {
@@ -283,7 +283,7 @@ function SyncPill({ status }: { status: CalendarSyncStatus }) {
         : { label: "Not synced", className: "bg-[#EAF7F0] text-[#5F756C]" };
 
   return (
-    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold", config.className)}>
+    <span className={cn("inline-flex items-center gap-1.5 rounded-full px-[9px] py-[5px] text-[11px] font-extrabold", config.className)}>
       <RefreshCw className="h-3.5 w-3.5" />
       {config.label}
     </span>
@@ -431,16 +431,16 @@ export function AppointmentRequestsPage() {
     activeIndex >= 0 && activeIndex < visibleItems.length - 1 ? visibleItems[activeIndex + 1]?.id : null;
 
   return (
-    <div className="space-y-5">
-      <section className="relative overflow-hidden rounded-[28px] border border-white/80 bg-white px-8 py-8 shadow-[0_24px_80px_rgba(16,46,36,0.07)]">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_72%_18%,rgba(234,247,240,0.95),transparent_32%)]" />
-        <div className="relative grid gap-6 lg:grid-cols-[1fr_340px] lg:items-center">
+    <div className="space-y-6">
+      <section className="relative min-h-[190px] overflow-hidden rounded-[28px] border border-[rgba(221,235,226,0.92)] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(246,252,248,0.96))] px-10 py-[34px] shadow-large-card before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/85">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_28%,rgba(214,245,229,0.72),transparent_30%)]" />
+        <div className="relative grid gap-6 lg:grid-cols-[1fr_320px] lg:items-center">
           <div>
-            <p className="text-sm font-black uppercase tracking-[0.24em] text-[#087C48]">Queue</p>
-            <h1 className="mt-3 text-4xl font-black leading-tight tracking-[-0.04em] text-[#102E24] md:text-5xl">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[#087C48]">Queue</p>
+            <h1 className="mt-3 text-[42px] font-black leading-[1.02] tracking-[-0.045em] text-[#102E24] md:text-5xl">
               Appointment Requests
             </h1>
-            <p className="mt-4 max-w-3xl text-base font-medium leading-7 text-[#5F756C]">
+            <p className="mt-4 max-w-[640px] text-[15px] font-medium leading-[1.75] text-[#5F756C]">
               Review incoming appointment intake, confirm clinic-ready slots, and monitor calendar sync health from one
               operational workspace.
             </p>
@@ -449,12 +449,12 @@ export function AppointmentRequestsPage() {
             src={heroOrangeCatIllustration}
             alt=""
             aria-hidden="true"
-            className="hidden w-full max-w-[330px] justify-self-end lg:block"
+            className="hidden w-full max-w-[320px] justify-self-end object-contain lg:block"
           />
         </div>
       </section>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+      <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-6">
         <MetricCard label="Overdue" value={overdueCount} icon={Clock3} tone="red" />
         <MetricCard label="Pending review" value={pendingCount} icon={FileText} tone="green" />
         <MetricCard label="Stale review" value={staleCount} icon={Hourglass} tone="amber" />
@@ -463,7 +463,7 @@ export function AppointmentRequestsPage() {
         <MetricCard label="Sync failures" value={failedSyncCount} icon={RefreshCw} tone="pink" />
       </section>
 
-      <section className="rounded-[24px] border border-white/80 bg-white p-6 shadow-[0_24px_80px_rgba(16,46,36,0.07)]">
+      <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-[26px] shadow-[0_22px_60px_rgba(15,64,42,0.08)]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xl font-black tracking-[-0.03em] text-[#102E24]">Queue controls</h2>
           {user?.role === "ADMIN" ? (
@@ -471,7 +471,7 @@ export function AppointmentRequestsPage() {
               variant="outline"
               onClick={() => overdueSweepMutation.mutate()}
               disabled={overdueSweepMutation.isPending}
-              className="h-12 rounded-2xl border-[#DDEBE2] px-5 text-[#087C48]"
+              className="h-12 rounded-2xl border-[#DDEBE2] px-5 font-bold text-[#087C48] shadow-[0_8px_18px_rgba(15,64,42,0.04)]"
             >
               {overdueSweepMutation.isPending ? (
                 <>
@@ -488,7 +488,7 @@ export function AppointmentRequestsPage() {
           ) : null}
         </div>
 
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-5 flex flex-wrap gap-2.5">
           {[
             { key: "overdue", label: "Overdue" },
             { key: "needs-review", label: "Needs Review" },
@@ -512,7 +512,7 @@ export function AppointmentRequestsPage() {
             <Input
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
-              className="h-12 rounded-2xl border-[#DDEBE2] bg-white pl-12 text-[#102E24]"
+              className="h-12 rounded-2xl border-[#DDEBE2] bg-white pl-12 font-semibold text-[#102E24] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] placeholder:text-[#829A91]"
               placeholder="Search by owner, pet, phone, or email"
             />
           </div>
@@ -520,13 +520,13 @@ export function AppointmentRequestsPage() {
             type="date"
             value={dateFrom}
             onChange={(event) => updateUrl({ dateFrom: event.target.value || null })}
-            className="h-12 rounded-2xl border-[#DDEBE2] bg-white"
+            className="h-12 rounded-2xl border-[#DDEBE2] bg-white font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
           />
           <Input
             type="date"
             value={dateTo}
             onChange={(event) => updateUrl({ dateTo: event.target.value || null })}
-            className="h-12 rounded-2xl border-[#DDEBE2] bg-white"
+            className="h-12 rounded-2xl border-[#DDEBE2] bg-white font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
           />
           <Button
             variant="ghost"
@@ -540,7 +540,7 @@ export function AppointmentRequestsPage() {
           </Button>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap gap-2.5">
           <FilterPill active={urgentOnly} icon={AlertTriangle} onClick={() => updateUrl({ urgent: urgentOnly ? null : "1" })}>
             Urgent only
           </FilterPill>
@@ -563,7 +563,7 @@ export function AppointmentRequestsPage() {
         </div>
       </section>
 
-      <section className="rounded-[24px] border border-white/80 bg-white p-6 shadow-[0_24px_80px_rgba(16,46,36,0.07)]">
+      <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-[26px] shadow-[0_24px_70px_rgba(15,64,42,0.08)]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-black tracking-[-0.03em] text-[#102E24]">Operational queue</h2>
@@ -611,9 +611,9 @@ export function AppointmentRequestsPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-hidden rounded-[24px] border border-[#DDEBE2]">
+              <div className="overflow-hidden rounded-[20px] border border-[#DDEBE2]">
                 <div className="max-h-[860px] overflow-y-auto">
-                  <div className="sticky top-0 z-10 hidden grid-cols-[1.15fr_1.55fr_1.45fr_1fr_1.25fr_0.75fr] gap-4 border-b border-[#DDEBE2] bg-[#EAF7F0]/95 px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-[#5F756C] backdrop-blur xl:grid">
+                  <div className="sticky top-0 z-10 hidden min-h-[54px] grid-cols-[1.15fr_1.55fr_1.45fr_1fr_1.25fr_0.75fr] items-center gap-4 border-b border-[#DDEBE2] bg-[#EAF7F0] px-5 py-4 text-[11px] font-black uppercase tracking-[0.14em] text-[#6F8F82] backdrop-blur xl:grid">
                     <div>Priority</div>
                     <div>Patient / Owner</div>
                     <div>Requested / Confirmed Time</div>
@@ -621,7 +621,7 @@ export function AppointmentRequestsPage() {
                     <div>Status / Sync</div>
                     <div>Review</div>
                   </div>
-                  <div className="divide-y divide-[#DDEBE2]">
+                  <div className="divide-y divide-[#E8F0EB]">
                     {visibleItems.map((item) => {
                       const timingLabel =
                         (item.status === "CONFIRMED" || item.status === "OVERDUE") && item.confirmedStartAt
@@ -642,7 +642,7 @@ export function AppointmentRequestsPage() {
                               search: location.search
                             })
                           }
-                          className="grid w-full gap-4 bg-white px-5 py-5 text-left transition hover:bg-[#FAFCFA] focus-visible:bg-[#F5FBF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#087C48] xl:grid-cols-[1.15fr_1.55fr_1.45fr_1fr_1.25fr_0.75fr]"
+                          className="group grid min-h-[94px] w-full gap-4 bg-white px-5 py-5 text-left transition hover:bg-[#FAFCFA] focus-visible:bg-[#F5FBF7] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#087C48] xl:grid-cols-[1.15fr_1.55fr_1.45fr_1fr_1.25fr_0.75fr]"
                         >
                           <div className="flex items-start">
                             <PriorityPill item={item} />
@@ -650,23 +650,23 @@ export function AppointmentRequestsPage() {
                           <div className="flex min-w-0 items-start gap-3">
                             <PetAvatar item={item} />
                             <div className="min-w-0">
-                              <p className="truncate text-base font-black text-[#102E24]">{item.pet.name}</p>
-                              <p className="mt-1 truncate text-sm font-semibold text-[#102E24]">
+                              <p className="truncate text-[15px] font-black text-[#102E24]">{item.pet.name}</p>
+                              <p className="mt-1 truncate text-[13px] font-semibold text-[#587267]">
                                 {item.owner.firstName} {item.owner.lastName}
                               </p>
-                              <p className="mt-1 text-sm font-medium text-[#5F756C]">{item.owner.phoneNumber}</p>
+                              <p className="mt-1 text-[13px] font-semibold text-[#587267]">{item.owner.phoneNumber}</p>
                             </div>
                           </div>
                           <div>
-                            <p className="text-sm font-black leading-6 text-[#102E24]">
+                            <p className="text-sm font-extrabold leading-6 text-[#102E24]">
                               {timingLabel === "No preferences captured" ? "No preferred time captured" : timingLabel}
                             </p>
-                            <p className="mt-1 inline-flex items-center gap-2 text-sm font-semibold text-[#5F756C]">
+                            <p className="mt-1 inline-flex items-center gap-2 text-xs font-semibold text-[#6D8279]">
                               <Globe2 className="h-4 w-4" />
                               {timingMeta}
                             </p>
                           </div>
-                          <div className="flex items-center gap-2 text-sm font-extrabold text-[#102E24]">
+                          <div className="flex items-center gap-2 text-[13px] font-extrabold text-[#102E24]">
                             <Stethoscope className="h-5 w-5 text-[#7B3FD6]" />
                             {formatVisitType(item.visitType)}
                           </div>
@@ -682,7 +682,7 @@ export function AppointmentRequestsPage() {
                             </p>
                           </div>
                           <div className="flex items-center justify-between gap-2 xl:justify-end">
-                            <span className="inline-flex items-center gap-2 text-sm font-black text-[#087C48]">
+                            <span className="inline-flex items-center gap-2 text-sm font-black text-[#087C48] transition group-hover:translate-x-0.5 group-hover:underline">
                               Review
                               <ChevronRight className="h-4 w-4" />
                             </span>
