@@ -96,3 +96,8 @@ export async function sendAppointmentRescheduleLink(id: string, responseDeadline
   });
   return normalizeAppointment(response.data);
 }
+
+export async function runAppointmentOverdueSweep() {
+  const response = await api.post<{ markedCount: number }>("/api/appointment-requests/mark-overdue");
+  return response.data;
+}

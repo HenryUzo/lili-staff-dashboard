@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { ChevronRight, Search } from "lucide-react";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { ChevronRight, LoaderCircle, Search } from "lucide-react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { getAppointmentRequests } from "@/api/appointments";
+import { getAppointmentRequests, runAppointmentOverdueSweep } from "@/api/appointments";
 import { getErrorMessage } from "@/api/http";
 import { AppointmentDetailDrawer } from "@/components/dashboard/appointment-detail-drawer";
 import { AppointmentPriorityBadges } from "@/components/dashboard/appointment-priority-badges";
@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useAuth } from "@/auth/auth-context";
 import {
   formatDateTime,
   formatPreferredSelections,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { AppointmentRequestListItem } from "@/types/api";
+import { toast } from "sonner";
 
 type AppointmentQueueTab = "overdue" | "needs-review" | "scheduled" | "closed" | "all";
 
@@ -131,6 +133,8 @@ function sortAppointments(items: AppointmentRequestListItem[], tab: AppointmentQ
 }
 
 export function AppointmentRequestsPage() {
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { appointmentId } = useParams();
@@ -194,6 +198,26 @@ export function AppointmentRequestsPage() {
     queryFn: ({ pageParam }) => getAppointmentRequests(filters, pageParam),
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor
+  });
+  const overdueSweepMutation = useMutation({
+    mutationFn: runAppointmentOverdueSweep,
+    onSuccess: async ({ markedCount }) => {
+      toast.success(
+        markedCount > 0
+          ? `${markedCount} appointment${markedCount === 1 ? "" : "s"} moved to overdue.`
+          : "No confirmed appointments were overdue."
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["appointment-requests"] }),
+        queryClient.invalidateQueries({ queryKey: ["overview"] }),
+        appointmentId
+          ? queryClient.invalidateQueries({ queryKey: ["appointment-request", appointmentId] })
+          : Promise.resolve()
+      ]);
+    },
+    onError: (error) => {
+      toast.error(getErrorMessage(error, "Unable to run overdue sweep"));
+    }
   });
 
   const items = requestsQuery.data?.pages.flatMap((page) => page.data) ?? [];
@@ -267,7 +291,25 @@ export function AppointmentRequestsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Queue controls</CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle>Queue controls</CardTitle>
+            {user?.role === "ADMIN" ? (
+              <Button
+                variant="outline"
+                onClick={() => overdueSweepMutation.mutate()}
+                disabled={overdueSweepMutation.isPending}
+              >
+                {overdueSweepMutation.isPending ? (
+                  <>
+                    <LoaderCircle className="h-4 w-4 animate-spin" />
+                    Running overdue sweep...
+                  </>
+                ) : (
+                  "Run overdue sweep"
+                )}
+              </Button>
+            ) : null}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
