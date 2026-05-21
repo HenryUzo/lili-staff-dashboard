@@ -25,6 +25,7 @@ import {
   formatVisitType,
   isToday
 } from "@/lib/format";
+import { hasStalePendingReviewRequest } from "@/lib/appointment-state";
 import { cn } from "@/lib/utils";
 import type { AppointmentRequestListItem } from "@/types/api";
 import { toast } from "sonner";
@@ -48,6 +49,10 @@ function hasCalendarIssue(item: AppointmentRequestListItem) {
 
 function isConfirmedToday(item: AppointmentRequestListItem) {
   return item.status === "CONFIRMED" && isToday(item.confirmedStartAt);
+}
+
+function isStalePendingReview(item: AppointmentRequestListItem) {
+  return hasStalePendingReviewRequest(item);
 }
 
 function getQueueState(item: AppointmentRequestListItem): Exclude<AppointmentQueueTab, "all"> {
@@ -81,6 +86,8 @@ function sortAppointments(items: AppointmentRequestListItem[], tab: AppointmentQ
   sorted.sort((left, right) => {
     const leftUrgent = isUrgentAppointment(left);
     const rightUrgent = isUrgentAppointment(right);
+    const leftStale = isStalePendingReview(left);
+    const rightStale = isStalePendingReview(right);
     const leftDuplicate = left.possibleDuplicate;
     const rightDuplicate = right.possibleDuplicate;
 
@@ -94,6 +101,7 @@ function sortAppointments(items: AppointmentRequestListItem[], tab: AppointmentQ
 
     if (tab === "needs-review") {
       if (leftUrgent !== rightUrgent) return leftUrgent ? -1 : 1;
+      if (leftStale !== rightStale) return leftStale ? -1 : 1;
       if (leftDuplicate !== rightDuplicate) return leftDuplicate ? -1 : 1;
       return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
     }
@@ -120,6 +128,7 @@ function sortAppointments(items: AppointmentRequestListItem[], tab: AppointmentQ
     }
     if (leftState === "needs-review") {
       if (leftUrgent !== rightUrgent) return leftUrgent ? -1 : 1;
+      if (leftStale !== rightStale) return leftStale ? -1 : 1;
       if (leftDuplicate !== rightDuplicate) return leftDuplicate ? -1 : 1;
       return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
     }
@@ -145,6 +154,7 @@ export function AppointmentRequestsPage() {
   const dateTo = searchParams.get("dateTo") ?? "";
   const urgentOnly = searchParams.get("urgent") === "1";
   const duplicateOnly = searchParams.get("duplicate") === "1";
+  const staleOnly = searchParams.get("stale") === "1";
   const syncIssuesOnly = searchParams.get("sync") === "1";
   const confirmedTodayOnly = searchParams.get("confirmedToday") === "1";
   const [searchInput, setSearchInput] = useState(searchValue);
@@ -234,6 +244,7 @@ export function AppointmentRequestsPage() {
   const pendingCount = tabCounts["needs-review"];
   const overdueCount = tabCounts.overdue;
   const urgentCount = items.filter((item) => isUrgentAppointment(item)).length;
+  const staleCount = items.filter((item) => isStalePendingReview(item)).length;
   const duplicateCount = items.filter((item) => item.possibleDuplicate).length;
   const failedSyncCount = items.filter((item) => hasCalendarIssue(item)).length;
   const unsyncedCount = items.filter(
@@ -244,6 +255,7 @@ export function AppointmentRequestsPage() {
     const filtered = items.filter((item) => {
       if (!matchesQueueTab(item, queueTab)) return false;
       if (urgentOnly && !isUrgentAppointment(item)) return false;
+      if (staleOnly && !isStalePendingReview(item)) return false;
       if (duplicateOnly && !item.possibleDuplicate) return false;
       if (syncIssuesOnly && !hasCalendarIssue(item)) return false;
       if (confirmedTodayOnly && !isConfirmedToday(item)) return false;
@@ -251,7 +263,7 @@ export function AppointmentRequestsPage() {
     });
 
     return sortAppointments(filtered, queueTab);
-  }, [confirmedTodayOnly, duplicateOnly, items, queueTab, syncIssuesOnly, urgentOnly]);
+  }, [confirmedTodayOnly, duplicateOnly, items, queueTab, staleOnly, syncIssuesOnly, urgentOnly]);
   const activeIndex = visibleItems.findIndex((item) => item.id === appointmentId);
   const previousAppointmentId = activeIndex > 0 ? visibleItems[activeIndex - 1]?.id : null;
   const nextAppointmentId =
@@ -265,10 +277,11 @@ export function AppointmentRequestsPage() {
         description="Review incoming appointment intake, confirm clinic-ready slots, and monitor calendar sync health from one operational workspace."
       />
 
-      <div className="grid gap-4 xl:grid-cols-5">
+      <div className="grid gap-4 xl:grid-cols-6">
         {[
           { label: "Overdue", value: overdueCount, tone: "danger" },
           { label: "Pending review", value: pendingCount, tone: "default" },
+          { label: "Stale review", value: staleCount, tone: "warning" },
           { label: "Urgent", value: urgentCount, tone: "danger" },
           { label: "Possible duplicates", value: duplicateCount, tone: "warning" },
           { label: "Sync failures", value: failedSyncCount, tone: "danger" }
@@ -374,6 +387,7 @@ export function AppointmentRequestsPage() {
           <div className="flex flex-wrap gap-2">
             {[
               { key: "urgent", label: "Urgent only", active: urgentOnly },
+              { key: "stale", label: "Requested slots passed", active: staleOnly },
               { key: "duplicate", label: "Possible duplicates", active: duplicateOnly },
               { key: "sync", label: "Sync issues", active: syncIssuesOnly },
               { key: "confirmedToday", label: "Confirmed today", active: confirmedTodayOnly }
@@ -449,6 +463,7 @@ export function AppointmentRequestsPage() {
                   <div className="divide-y divide-border">
                     {visibleItems.map((item) => {
                       const urgent = isUrgentAppointment(item);
+                      const stale = isStalePendingReview(item);
                       const syncIssue = hasCalendarIssue(item);
                       const timingLabel =
                         (item.status === "CONFIRMED" || item.status === "OVERDUE") && item.confirmedStartAt
@@ -474,6 +489,7 @@ export function AppointmentRequestsPage() {
                           <div>
                             <AppointmentPriorityBadges
                               urgent={urgent}
+                              stale={stale}
                               duplicate={item.possibleDuplicate}
                               syncIssue={syncIssue}
                             />

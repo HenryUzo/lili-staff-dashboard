@@ -1,15 +1,17 @@
-import { AlertTriangle, Clock3, Copy, Siren } from "lucide-react";
+import { AlertTriangle, Clock3, Copy, History, Siren } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export function AppointmentPriorityBadges({
   urgent,
+  stale,
   duplicate,
   syncIssue,
   showRoutine = true,
   compact = false
 }: {
   urgent: boolean;
+  stale: boolean;
   duplicate: boolean;
   syncIssue: boolean;
   showRoutine?: boolean;
@@ -25,6 +27,12 @@ export function AppointmentPriorityBadges({
           Urgent
         </Badge>
       ) : null}
+      {stale ? (
+        <Badge variant="warning" className={cn("gap-1.5", sizeClass)}>
+          <History className="h-3.5 w-3.5" />
+          Requested slots passed
+        </Badge>
+      ) : null}
       {duplicate ? (
         <Badge variant="warning" className={cn("gap-1.5", sizeClass)}>
           <Copy className="h-3.5 w-3.5" />
@@ -37,7 +45,7 @@ export function AppointmentPriorityBadges({
           Sync issue
         </Badge>
       ) : null}
-      {!urgent && !duplicate && !syncIssue && showRoutine ? (
+      {!urgent && !stale && !duplicate && !syncIssue && showRoutine ? (
         <Badge variant="default" className={cn("gap-1.5 bg-muted text-muted-foreground", sizeClass)}>
           <Clock3 className="h-3.5 w-3.5" />
           Routine

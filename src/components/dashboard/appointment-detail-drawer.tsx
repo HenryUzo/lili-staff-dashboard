@@ -46,6 +46,7 @@ import {
   formatVisitType,
   toDateTimeLocalValue
 } from "@/lib/format";
+import { hasStalePendingReviewRequest } from "@/lib/appointment-state";
 import { cn } from "@/lib/utils";
 import type {
   AppointmentPreferredSelection,
@@ -457,6 +458,7 @@ export function AppointmentDetailDrawer({
     new Date(responseDeadlineInput).getTime() > Date.now() &&
     !sendRescheduleLinkMutation.isPending;
   const isUrgent = request?.visitType === "URGENT_CARE";
+  const isStalePendingReview = request ? hasStalePendingReviewRequest(request) : false;
   const hasSyncIssue = request?.calendarSyncStatus === "FAILED";
   const syncReadyAfterConfirm =
     selectedStatus === "CONFIRMED" && confirmedSlotIsValid && request?.calendarSyncStatus !== "SYNCED";
@@ -538,6 +540,7 @@ export function AppointmentDetailDrawer({
                     <CalendarSyncBadge status={request.calendarSyncStatus} />
                     <AppointmentPriorityBadges
                       urgent={Boolean(isUrgent)}
+                      stale={isStalePendingReview}
                       duplicate={request.possibleDuplicate}
                       syncIssue={Boolean(hasSyncIssue)}
                       compact
@@ -960,6 +963,13 @@ export function AppointmentDetailDrawer({
                         )}
                       </div>
                     </div>
+
+                    {isStalePendingReview ? (
+                      <Alert className="mt-4 border-warning/30 bg-warning/10 text-warning">
+                        All applicant-requested times are now in the past. This request still needs review, but it is
+                        not a confirmed overdue appointment.
+                      </Alert>
+                    ) : null}
 
                     {request.duplicateOfId ? (
                       <Alert className="mt-4 border-warning/30 bg-warning/10 text-warning">
