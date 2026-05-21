@@ -21,8 +21,8 @@ export function Topbar() {
     <header className="relative z-20 flex min-h-[84px] flex-col gap-4 overflow-visible rounded-[24px] border border-[rgba(221,235,226,0.88)] bg-[rgba(255,255,255,0.94)] px-6 py-[18px] shadow-[0_18px_50px_rgba(12,60,42,0.08),0_4px_14px_rgba(12,60,42,0.04)] backdrop-blur-[18px] sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-4">
         <div>
-          <p className="text-sm font-extrabold text-[#102E24]">{label}</p>
-          <div className="mt-1 flex items-center gap-2 text-[13px] font-semibold text-[#4F6F62]">
+          <p className="text-sm font-[750] tracking-[-0.01em] text-[#102E24]">{label}</p>
+          <div className="mt-1 flex items-center gap-2 text-[13px] font-medium text-[#4F6F62]">
             <CalendarRange className="h-4 w-4 text-[#087C48]" />
             {new Intl.DateTimeFormat(undefined, {
               weekday: "long",
@@ -49,11 +49,11 @@ export function Topbar() {
               <ShieldCheck className="h-3.5 w-3.5" />
               {user?.role ?? "Staff"}
             </div>
-            <p className="mt-0.5 max-w-[260px] truncate text-sm font-bold text-[#102E24]">{user?.email}</p>
+            <p className="mt-0.5 max-w-[260px] truncate text-sm font-bold tracking-[-0.01em] text-[#102E24]">{user?.email}</p>
           </div>
           <ChevronDown className="h-4 w-4 text-[#087C48]" />
         </div>
-        <Button variant="outline" onClick={logout} className="h-12 rounded-2xl border-[#DDEBE2] px-6 font-bold text-[#102E24] shadow-[0_8px_24px_rgba(15,64,42,0.04)]">
+        <Button variant="outline" onClick={logout} className="h-12 rounded-2xl border-[#DDEBE2] px-6 text-sm font-bold tracking-[-0.01em] text-[#102E24] shadow-[0_8px_24px_rgba(15,64,42,0.04)]">
           <LogOut className="h-4 w-4 text-[#087C48]" />
           Sign out
         </Button>

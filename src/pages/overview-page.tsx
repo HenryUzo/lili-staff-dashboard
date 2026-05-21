@@ -48,11 +48,11 @@ type KpiTone = keyof typeof kpiStyles;
 
 function OverviewHero() {
   return (
-    <section className="relative min-h-[220px] overflow-hidden rounded-[28px] border border-[rgba(221,235,226,0.92)] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(246,252,248,0.96))] px-8 py-9 shadow-large-card sm:px-10">
-      <div className="pointer-events-none absolute right-4 top-1/2 hidden h-[310px] w-[480px] -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(199,238,217,0.55),transparent_64%)] lg:block" />
-      <div className="relative z-10 max-w-[640px]">
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-[#087C48]">Today</p>
-        <h1 className="mt-4 text-[40px] font-black leading-[1.02] text-[#102E24] sm:text-5xl">
+    <section className="relative grid min-h-[240px] w-full overflow-hidden rounded-[28px] border border-[rgba(221,235,226,0.92)] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(246,252,248,0.96))] px-8 py-9 shadow-large-card sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-center lg:gap-8">
+      <div className="pointer-events-none absolute right-2 top-1/2 hidden h-[300px] w-[500px] -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(199,238,217,0.55),transparent_64%)] lg:block" />
+      <div className="relative z-10 max-w-[620px]">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#087C48]">Today</p>
+        <h1 className="mt-3.5 text-[42px] font-[850] leading-[1.05] tracking-[-0.04em] text-[#102E24] sm:text-[46px]">
           Operations Overview
         </h1>
         <p className="mt-5 max-w-[620px] text-[15px] font-medium leading-[1.75] text-[#5F756C]">
@@ -60,12 +60,14 @@ function OverviewHero() {
           new patient intake, and follow-up priorities from one calm operational view.
         </p>
       </div>
-      <img
-        src={operationsHeroCalendarDog}
-        alt=""
-        aria-hidden="true"
-        className="relative z-10 mt-8 w-full max-w-[360px] object-contain mix-blend-multiply sm:ml-auto lg:absolute lg:right-8 lg:top-1/2 lg:mt-0 lg:max-w-[420px] lg:-translate-y-1/2"
-      />
+      <div className="relative z-10 mt-8 flex min-h-[180px] items-center justify-end lg:mt-0">
+        <img
+          src={operationsHeroCalendarDog}
+          alt=""
+          aria-hidden="true"
+          className="h-auto w-full max-w-[390px] object-contain object-center mix-blend-multiply lg:max-w-[420px]"
+        />
+      </div>
     </section>
   );
 }
@@ -93,12 +95,12 @@ function KpiCard({
         <Icon className="h-6 w-6" />
       </div>
       <div className="mt-5 flex items-end gap-3">
-        <p className="text-4xl font-black leading-none text-[#102E24]">{value}</p>
+        <p className="text-[36px] font-extrabold leading-none tracking-[-0.035em] text-[#102E24]">{value}</p>
         <TrendingUp className="mb-1 h-5 w-5 text-[#087C48]" />
       </div>
-      <h2 className="mt-4 text-[13px] font-[850] text-[#263D35]">{title}</h2>
-      <p className="mt-2 text-[13px] font-semibold leading-6 text-[#5F756C]">{helper}</p>
-      <span className={cn("mt-5 inline-flex rounded-full px-2.5 py-1.5 text-[11px] font-[850]", styles.pill)}>
+      <h2 className="mt-4 text-[13px] font-bold text-[#263D35]">{title}</h2>
+      <p className="mt-2 text-[13px] font-medium leading-[1.6] text-[#5F756C]">{helper}</p>
+      <span className={cn("mt-5 inline-flex rounded-full px-2 py-1.5 text-[11px] font-bold leading-none", styles.pill)}>
         {trend}
       </span>
     </article>
@@ -117,7 +119,7 @@ function StatusPill({ children, tone = "green" }: { children: string; tone?: Kpi
             ? "bg-[#EAF3FF] text-[#2673D9]"
             : "bg-[#EAF7F0] text-[#2F7D5A]";
 
-  return <span className={cn("rounded-full px-2.5 py-1 text-[11px] font-[850]", className)}>{children}</span>;
+  return <span className={cn("rounded-full px-2 py-1.5 text-[11px] font-bold leading-none", className)}>{children}</span>;
 }
 
 function PetAvatar({ index, urgent }: { index: number; urgent?: boolean }) {
@@ -143,14 +145,14 @@ function RecentAppointmentRow({ item, index }: { item: AppointmentRequestListIte
   return (
     <Link
       to={`/appointments/${item.id}`}
-      className="group flex items-center gap-3 rounded-[18px] border border-[#DDEBE2] bg-[#FAFCFA] px-4 py-3.5 transition duration-180 hover:-translate-y-px hover:bg-[#F5FBF7] hover:shadow-[0_12px_30px_rgba(15,64,42,0.06)]"
+      className="group flex min-h-[76px] items-center gap-3 rounded-[18px] border border-[#DDEBE2] bg-[#FAFCFA] px-[18px] py-4 transition duration-180 hover:-translate-y-px hover:bg-[#F5FBF7] hover:shadow-[0_12px_30px_rgba(15,64,42,0.06)]"
     >
       <PetAvatar index={index} urgent={isUrgent} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-[15px] font-[850] text-[#102E24]">{item.pet.name}</p>
-            <p className="mt-1 truncate text-[13px] font-semibold text-[#587267]">
+            <p className="truncate text-[15px] font-[750] tracking-[-0.01em] text-[#102E24]">{item.pet.name}</p>
+            <p className="mt-1 truncate text-[13px] font-medium leading-[1.45] text-[#5F756C]">
               {item.owner.firstName} {item.owner.lastName} · {item.owner.phoneNumber}
             </p>
           </div>
@@ -158,7 +160,7 @@ function RecentAppointmentRow({ item, index }: { item: AppointmentRequestListIte
             {formatStatus(item.status)}
           </StatusPill>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] font-semibold text-[#587267]">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] font-medium leading-[1.45] text-[#5F756C]">
           <StatusPill tone={isUrgent ? "danger" : "green"}>
             {isUrgent ? "Urgent" : "Clear"}
           </StatusPill>
@@ -175,20 +177,20 @@ function RecentNewPatientRow({ item, index }: { item: NewPatientRequest; index: 
   return (
     <Link
       to={`/new-patients/${item.id}`}
-      className="group flex items-center gap-3 rounded-[18px] border border-[#DDEBE2] bg-[#FAFCFA] px-4 py-3.5 transition duration-180 hover:-translate-y-px hover:bg-[#F5FBF7] hover:shadow-[0_12px_30px_rgba(15,64,42,0.06)]"
+      className="group flex min-h-[76px] items-center gap-3 rounded-[18px] border border-[#DDEBE2] bg-[#FAFCFA] px-[18px] py-4 transition duration-180 hover:-translate-y-px hover:bg-[#F5FBF7] hover:shadow-[0_12px_30px_rgba(15,64,42,0.06)]"
     >
       <PetAvatar index={index} urgent={item.isUrgent} />
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="truncate text-[15px] font-[850] text-[#102E24]">{item.petName}</p>
-            <p className="mt-1 truncate text-[13px] font-semibold text-[#587267]">
+            <p className="truncate text-[15px] font-[750] tracking-[-0.01em] text-[#102E24]">{item.petName}</p>
+            <p className="mt-1 truncate text-[13px] font-medium leading-[1.45] text-[#5F756C]">
               {item.ownerFullName} · {item.ownerPhoneNumber}
             </p>
           </div>
           <StatusPill tone={item.isUrgent ? "danger" : "green"}>{item.isUrgent ? "Urgent" : "Clear"}</StatusPill>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] font-semibold text-[#587267]">
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] font-medium leading-[1.45] text-[#5F756C]">
           <StatusPill tone="green">{formatDateTime(item.preferredDateTime, "No preferred time")}</StatusPill>
           <span>{formatRelativeTime(item.createdAt)}</span>
         </div>
@@ -214,20 +216,20 @@ function RecentActivityCard({
   linkLabel: string;
 }) {
   return (
-    <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-6 shadow-soft-card">
+    <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-[26px] shadow-[0_22px_60px_rgba(15,64,42,0.08)]">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-[850] text-[#102E24]">{title}</h2>
-          <p className="mt-1 text-[13px] font-semibold text-[#5F756C]">{subtitle}</p>
+          <h2 className="text-xl font-extrabold leading-[1.25] tracking-[-0.02em] text-[#102E24]">{title}</h2>
+          <p className="mt-1 text-[13px] font-medium leading-[1.55] text-[#5F756C]">{subtitle}</p>
         </div>
-        <span className="shrink-0 rounded-full bg-[#EAF7F0] px-2.5 py-1.5 text-xs font-[850] text-[#087C48]">
+        <span className="shrink-0 rounded-full bg-[#EAF7F0] px-2 py-1.5 text-[11px] font-bold leading-none text-[#087C48]">
           {loaded} loaded
         </span>
       </div>
       <div className="mt-5 space-y-3">{children}</div>
       <Link
         to={href}
-        className="mt-5 inline-flex items-center gap-2 text-sm font-[850] text-[#087C48] transition hover:translate-x-1"
+        className="mt-5 inline-flex items-center gap-2 text-sm font-bold tracking-[-0.01em] text-[#087C48] transition hover:translate-x-1"
       >
         {linkLabel}
         <ChevronRight className="h-4 w-4" />
@@ -238,7 +240,7 @@ function RecentActivityCard({
 
 function EmptyRecentState({ label }: { label: string }) {
   return (
-    <div className="rounded-[18px] border border-dashed border-[#DDEBE2] bg-[#FAFCFA] px-4 py-8 text-center text-sm font-semibold text-[#5F756C]">
+    <div className="rounded-[18px] border border-dashed border-[#DDEBE2] bg-[#FAFCFA] px-4 py-8 text-center text-sm font-medium leading-6 text-[#5F756C]">
       {label}
     </div>
   );
@@ -261,10 +263,10 @@ function HealthItem({
         <Icon className="h-6 w-6" />
       </div>
       <div>
-        <h3 className="text-sm font-[850] text-[#102E24]">{title}</h3>
-        <p className="mt-1 max-w-[220px] text-[13px] font-semibold leading-6 text-[#5F756C]">{text}</p>
+        <h3 className="text-sm font-[750] tracking-[-0.01em] text-[#102E24]">{title}</h3>
+        <p className="mt-1 max-w-[220px] text-[13px] font-medium leading-6 text-[#5F756C]">{text}</p>
         {pill ? (
-          <span className="mt-2 inline-flex rounded-full bg-[#EAF7F0] px-2.5 py-1 text-[11px] font-[850] text-[#087C48]">
+          <span className="mt-2 inline-flex rounded-full bg-[#EAF7F0] px-2 py-1.5 text-[11px] font-bold leading-none text-[#087C48]">
             {pill}
           </span>
         ) : null}
@@ -277,7 +279,7 @@ function OverviewLoading() {
   return (
     <div className="space-y-6">
       <OverviewHero />
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid w-full gap-5 md:grid-cols-2 xl:grid-cols-4">
         {Array.from({ length: 4 }).map((_, index) => (
           <Skeleton key={index} className="h-40 rounded-[22px]" />
         ))}
@@ -337,7 +339,7 @@ export function OverviewPage() {
     <div className="space-y-6">
       <OverviewHero />
 
-      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid w-full gap-5 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           title="Pending reviews"
           value={pendingCount}
@@ -372,7 +374,7 @@ export function OverviewPage() {
         />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="grid gap-5 xl:grid-cols-2">
         <RecentActivityCard
           title="Recent appointment requests"
           subtitle="Newest clinical appointment intake from the live queue."
@@ -404,10 +406,10 @@ export function OverviewPage() {
         </RecentActivityCard>
       </div>
 
-      <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-7 shadow-soft-card">
+      <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-7 shadow-[0_18px_42px_rgba(15,64,42,0.07)]">
         <div>
-          <h2 className="text-xl font-[850] text-[#102E24]">Operational health</h2>
-          <p className="mt-1 text-[13px] font-semibold text-[#5F756C]">System status and file handling information.</p>
+          <h2 className="text-xl font-extrabold leading-[1.25] tracking-[-0.02em] text-[#102E24]">Operational health</h2>
+          <p className="mt-1 text-[13px] font-medium leading-[1.55] text-[#5F756C]">System status and file handling information.</p>
         </div>
         <div className="mt-6 grid gap-2 md:grid-cols-2 lg:grid-cols-4">
           <HealthItem
