@@ -160,7 +160,7 @@ function MetricCard({
   };
 
   return (
-    <div className="min-h-[110px] rounded-[22px] border border-[rgba(221,235,226,0.88)] bg-[rgba(255,255,255,0.96)] p-[22px] shadow-soft-card">
+    <div className="min-h-[110px] rounded-[22px] border border-[rgba(221,235,226,0.88)] bg-[rgba(255,255,255,0.96)] p-[22px]">
       <div className="flex items-center gap-4">
         <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", tones[tone])}>
           <Icon className="h-6 w-6" />
@@ -195,7 +195,7 @@ function FilterPill({
       className={cn(
         "inline-flex h-10 items-center gap-2 rounded-full border px-4 text-[13px] font-bold transition",
         active
-          ? "border-[#087C48] bg-[#087C48] text-white shadow-[0_10px_24px_rgba(8,124,72,0.18)]"
+          ? "border-[#087C48] bg-[#087C48] text-white"
           : "border-[#DDEBE2] bg-white text-[#5F756C] hover:border-[#BFD8CA] hover:bg-[#F5FBF7] hover:text-[#087C48]"
       )}
     >
@@ -432,7 +432,7 @@ export function AppointmentRequestsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="relative min-h-[190px] overflow-hidden rounded-[28px] border border-[rgba(221,235,226,0.92)] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(246,252,248,0.96))] px-10 py-[34px] shadow-large-card before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/85">
+      <section className="relative min-h-[190px] overflow-hidden rounded-[28px] border border-[rgba(221,235,226,0.92)] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(246,252,248,0.96))] px-10 py-[34px] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-white/85">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_28%,rgba(214,245,229,0.72),transparent_30%)]" />
         <div className="relative grid gap-6 lg:grid-cols-[1fr_320px] lg:items-center">
           <div>
@@ -463,7 +463,7 @@ export function AppointmentRequestsPage() {
         <MetricCard label="Sync failures" value={failedSyncCount} icon={RefreshCw} tone="pink" />
       </section>
 
-      <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-[26px] shadow-[0_22px_60px_rgba(15,64,42,0.08)]">
+      <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-[26px]">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-xl font-black tracking-[-0.03em] text-[#102E24]">Queue controls</h2>
           {user?.role === "ADMIN" ? (
@@ -471,7 +471,7 @@ export function AppointmentRequestsPage() {
               variant="outline"
               onClick={() => overdueSweepMutation.mutate()}
               disabled={overdueSweepMutation.isPending}
-              className="h-12 rounded-2xl border-[#DDEBE2] px-5 font-bold text-[#087C48] shadow-[0_8px_18px_rgba(15,64,42,0.04)]"
+              className="h-12 rounded-2xl border-[#DDEBE2] px-5 font-bold text-[#087C48]"
             >
               {overdueSweepMutation.isPending ? (
                 <>
@@ -512,7 +512,7 @@ export function AppointmentRequestsPage() {
             <Input
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
-              className="h-12 rounded-2xl border-[#DDEBE2] bg-white pl-12 font-semibold text-[#102E24] shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] placeholder:text-[#829A91]"
+              className="h-12 rounded-2xl border-[#DDEBE2] bg-white pl-12 font-semibold text-[#102E24] placeholder:text-[#829A91]"
               placeholder="Search by owner, pet, phone, or email"
             />
           </div>
@@ -520,13 +520,13 @@ export function AppointmentRequestsPage() {
             type="date"
             value={dateFrom}
             onChange={(event) => updateUrl({ dateFrom: event.target.value || null })}
-            className="h-12 rounded-2xl border-[#DDEBE2] bg-white font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+            className="h-12 rounded-2xl border-[#DDEBE2] bg-white font-semibold"
           />
           <Input
             type="date"
             value={dateTo}
             onChange={(event) => updateUrl({ dateTo: event.target.value || null })}
-            className="h-12 rounded-2xl border-[#DDEBE2] bg-white font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
+            className="h-12 rounded-2xl border-[#DDEBE2] bg-white font-semibold"
           />
           <Button
             variant="ghost"
@@ -563,7 +563,7 @@ export function AppointmentRequestsPage() {
         </div>
       </section>
 
-      <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-[26px] shadow-[0_24px_70px_rgba(15,64,42,0.08)]">
+      <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-[26px]">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="text-xl font-black tracking-[-0.03em] text-[#102E24]">Operational queue</h2>
