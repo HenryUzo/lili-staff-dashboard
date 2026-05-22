@@ -2,7 +2,7 @@ import { ClipboardList, LayoutDashboard, PawPrint, ShieldCheck } from "lucide-re
 import { NavLink } from "react-router-dom";
 import careOperationsHeartline from "@/assets/illustrations/care-operations-heartline.png";
 import dogCatSidebarIllustration from "@/assets/illustrations/dog-cat-sidebar-illustration.png";
-import liliLogo from "@/assets/illustrations/lili-logo.svg";
+import liliLogo from "@/assets/illustrations/lili-veterinary-hospital-logo.svg";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -14,21 +14,24 @@ const navItems = [
 export function Sidebar() {
   return (
     <aside className="hidden h-[calc(100vh-32px)] w-[280px] shrink-0 rounded-[28px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.92)] p-6 backdrop-blur-[18px] lg:sticky lg:top-4 lg:flex lg:flex-col">
-      <div className="mb-8 flex items-center gap-3">
-        <img src={liliLogo} alt="Lili Vet Hospital" className="h-16 w-auto" />
+      <div className="mb-8 flex items-center">
+        <img src={liliLogo} alt="Lili Veterinary Hospital" className="h-auto w-[205px] rounded-sm object-contain" />
       </div>
 
-      <div className="relative mb-8 min-h-[190px] overflow-hidden rounded-[24px] bg-[linear-gradient(145deg,#087C48_0%,#06452F_100%)] p-6 text-white">
+      <div className="relative mb-6 min-h-[132px] overflow-hidden rounded-[22px] bg-[linear-gradient(145deg,#087C48_0%,#06452F_100%)] p-5 text-white">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_84%_70%,rgba(126,211,166,0.22),transparent_38%)]" />
         <img
           src={careOperationsHeartline}
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-3 right-0 w-28 opacity-20"
+          className="pointer-events-none absolute bottom-[-8px] right-[-30px] w-40 opacity-[0.14] mix-blend-screen"
         />
-        <p className="relative text-[11px] font-bold uppercase tracking-[0.18em] text-white/75">Care operations</p>
-        <h3 className="relative mt-4 text-[21px] font-extrabold leading-[1.25] tracking-[-0.02em]">Calm control over every request.</h3>
-        <p className="relative mt-3 text-sm font-medium leading-[1.6] text-white/86">
-          Review urgent cases, triage new patients, and keep staff workflows clear.
+        <p className="relative text-[10px] font-bold uppercase tracking-[0.18em] text-white/72">Care operations</p>
+        <h3 className="relative mt-3 max-w-[165px] text-[17px] font-extrabold leading-[1.2] tracking-[-0.02em]">
+          Calm control for intake.
+        </h3>
+        <p className="relative mt-2 max-w-[160px] text-[12px] font-medium leading-[1.45] text-white/80">
+          Triage urgent cases fast.
         </p>
       </div>
 
