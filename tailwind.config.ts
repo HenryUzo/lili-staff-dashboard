@@ -46,15 +46,19 @@ const config: Config = {
       },
       boxShadow: {
         shell: "0 24px 80px rgba(23, 56, 45, 0.08)",
-        soft: "0 10px 30px rgba(23, 56, 45, 0.08)"
+        soft: "0 10px 30px rgba(23, 56, 45, 0.08)",
+        "soft-card": "0 18px 42px rgba(15, 64, 42, 0.08), 0 4px 12px rgba(15, 64, 42, 0.04)",
+        "large-card": "0 24px 70px rgba(15, 64, 42, 0.10), 0 8px 24px rgba(15, 64, 42, 0.05)",
+        sidebar: "0 28px 80px rgba(15, 64, 42, 0.12), 0 8px 24px rgba(15, 64, 42, 0.06)",
+        "green-glow": "0 22px 45px rgba(8, 124, 72, 0.24)"
       },
       borderRadius: {
         xl: "1rem",
         "2xl": "1.5rem"
       },
       fontFamily: {
-        sans: ["Manrope", "Avenir Next", "Segoe UI", "sans-serif"],
-        serif: ["Newsreader", "Georgia", "serif"]
+        sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+        serif: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"]
       },
       backgroundImage: {
         "vet-grid":

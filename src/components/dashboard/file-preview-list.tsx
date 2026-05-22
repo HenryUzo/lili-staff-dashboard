@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import emptyFilesStateIllustration from "@/assets/illustrations/empty-files-state-illustration.png";
 import { getFileKind } from "@/lib/format";
 import type { UploadedFile } from "@/types/api";
 
@@ -25,8 +26,10 @@ export function FilePreviewList({ files }: { files: UploadedFile[] }) {
 
   if (files.length === 0) {
     return (
-      <Card className="border-dashed p-4 text-sm text-muted-foreground">
-        No files were attached to this request.
+      <Card className="flex flex-col items-center justify-center border-dashed p-8 text-center text-sm text-muted-foreground">
+        <img src={emptyFilesStateIllustration} alt="" aria-hidden="true" className="mb-4 w-36" />
+        <p className="font-semibold text-foreground">No files attached</p>
+        <p className="mt-1">Uploaded medical records will appear here.</p>
       </Card>
     );
   }

@@ -2,9 +2,11 @@ export type StaffRole = "ADMIN" | "STAFF";
 export type AppointmentRequestStatus =
   | "PENDING_REVIEW"
   | "CONFIRMED"
+  | "OVERDUE"
   | "CANCELLED"
   | "COMPLETED"
   | "NO_SHOW";
+export type CalendarSyncStatus = "NOT_SYNCED" | "SYNCED" | "FAILED";
 export type VisitType =
   | "URGENT_CARE"
   | "WELLNESS_EXAM"
@@ -88,6 +90,20 @@ export interface AppointmentRequestListItem {
   status: AppointmentRequestStatus;
   visitType: VisitType;
   timezone: string | null;
+  confirmedStartAt: string | null;
+  confirmedEndAt: string | null;
+  confirmedTimezone: string | null;
+  rescheduleRequestedAt: string | null;
+  rescheduleResponseDeadline: string | null;
+  rescheduleEmailSentAt: string | null;
+  rescheduleTokenIssuedAt: string | null;
+  rescheduledFromAppointmentRequestId: string | null;
+  replacementAppointmentRequestId: string | null;
+  calendarEventId: string | null;
+  calendarEventUrl: string | null;
+  calendarSyncStatus: CalendarSyncStatus;
+  calendarSyncedAt: string | null;
+  calendarSyncError: string | null;
   preferredSelections: AppointmentPreferredSelection[];
   possibleDuplicate: boolean;
   duplicateOfId: string | null;
@@ -103,11 +119,17 @@ export interface AppointmentRequestDetail extends AppointmentRequestListItem {
   currentMedications: string | null;
   previousVeterinarian: string | null;
   symptomDuration: string | null;
+  confirmedByStaffUserId: string | null;
   files: UploadedFile[];
   draft: {
     id: string;
     sessionToken: string;
     submittedAt: string | null;
+  } | null;
+  replacementAppointmentRequest?: {
+    id: string;
+    status: AppointmentRequestStatus;
+    createdAt: string;
   } | null;
 }
 
@@ -170,6 +192,21 @@ export interface RawAppointmentBase {
   status: AppointmentRequestStatus;
   visitType: VisitType;
   timezone: string | null;
+  confirmedStartAt: string | null;
+  confirmedEndAt: string | null;
+  confirmedTimezone: string | null;
+  rescheduleRequestedAt: string | null;
+  rescheduleResponseDeadline: string | null;
+  rescheduleEmailSentAt: string | null;
+  rescheduleTokenIssuedAt: string | null;
+  rescheduledFromAppointmentRequestId: string | null;
+  replacementAppointmentRequestId: string | null;
+  confirmedByStaffUserId?: string | null;
+  calendarEventId: string | null;
+  calendarEventUrl: string | null;
+  calendarSyncStatus: CalendarSyncStatus;
+  calendarSyncedAt: string | null;
+  calendarSyncError: string | null;
   preferredSelections?: RawAppointmentPreferredSelection[] | null;
   preferredSlots?: string[] | null;
   possibleDuplicate: boolean;
@@ -190,5 +227,10 @@ export interface RawAppointmentDetail extends RawAppointmentBase {
     id: string;
     sessionToken: string;
     submittedAt: string | null;
+  } | null;
+  replacementAppointmentRequest?: {
+    id: string;
+    status: AppointmentRequestStatus;
+    createdAt: string;
   } | null;
 }

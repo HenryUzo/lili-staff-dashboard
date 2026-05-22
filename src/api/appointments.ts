@@ -72,7 +72,32 @@ export async function getAppointmentRequest(id: string) {
   return normalizeAppointment(response.data);
 }
 
-export async function updateAppointmentStatus(id: string, status: AppointmentRequestStatus) {
-  const response = await api.patch(`/api/appointment-requests/${id}/status`, { status });
+export async function updateAppointmentStatus(
+  id: string,
+  input: {
+    status: AppointmentRequestStatus;
+    confirmedStartAt?: string;
+    confirmedEndAt?: string;
+    confirmedTimezone?: string;
+  }
+) {
+  const response = await api.patch<RawAppointmentDetail>(`/api/appointment-requests/${id}/status`, input);
+  return normalizeAppointment(response.data);
+}
+
+export async function retryAppointmentCalendarSync(id: string) {
+  const response = await api.post<RawAppointmentDetail>(`/api/appointment-requests/${id}/calendar-sync`);
+  return normalizeAppointment(response.data);
+}
+
+export async function sendAppointmentRescheduleLink(id: string, responseDeadline: string) {
+  const response = await api.post<RawAppointmentDetail>(`/api/appointment-requests/${id}/reschedule-link`, {
+    responseDeadline
+  });
+  return normalizeAppointment(response.data);
+}
+
+export async function runAppointmentOverdueSweep() {
+  const response = await api.post<{ markedCount: number }>("/api/appointment-requests/mark-overdue");
   return response.data;
 }

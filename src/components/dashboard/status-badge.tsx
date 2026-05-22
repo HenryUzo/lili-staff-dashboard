@@ -8,6 +8,8 @@ export function StatusBadge({ status }: { status: AppointmentRequestStatus }) {
       ? "success"
       : status === "PENDING_REVIEW"
         ? "warning"
+        : status === "OVERDUE"
+          ? "danger"
         : status === "COMPLETED"
           ? "accent"
           : "danger";

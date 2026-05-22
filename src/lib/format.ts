@@ -1,5 +1,6 @@
 import { format, formatDistanceToNowStrict, isValid, parseISO } from "date-fns";
 import type {
+  CalendarSyncStatus,
   AppointmentPreferredSelection,
   AppointmentRequestStatus,
   PetSpecies,
@@ -16,6 +17,13 @@ export function formatDateTime(dateString?: string | null, fallback = "Not provi
   const date = parseDate(dateString);
   if (!date) return fallback;
   return format(date, "MMM d, yyyy 'at' h:mm a");
+}
+
+export function toDateTimeLocalValue(dateString?: string | null) {
+  if (!dateString) return "";
+  const date = parseDate(dateString);
+  if (!date) return "";
+  return format(date, "yyyy-MM-dd'T'HH:mm");
 }
 
 export function formatDateOnly(dateString?: string | null, fallback = "Not provided") {
@@ -51,6 +59,10 @@ export function formatStatus(status: AppointmentRequestStatus) {
     .split("_")
     .map((part) => part[0]?.toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+export function formatCalendarSyncStatus(status: CalendarSyncStatus) {
+  return status === "SYNCED" ? "Synced" : status === "FAILED" ? "Failed" : "Not synced";
 }
 
 export function formatVisitType(value: string) {

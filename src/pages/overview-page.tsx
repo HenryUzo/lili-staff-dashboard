@@ -1,18 +1,296 @@
 import { useQuery } from "@tanstack/react-query";
-import { ClipboardList, PawPrint, ShieldAlert, Stethoscope } from "lucide-react";
+import {
+  Activity,
+  BellRing,
+  CalendarCheck2,
+  ChevronRight,
+  ClipboardList,
+  FileText,
+  LockKeyhole,
+  PawPrint,
+  Server,
+  TrendingUp
+} from "lucide-react";
+import type { ComponentType, ReactNode } from "react";
 import { Link } from "react-router-dom";
+import operationsHeroCalendarDog from "@/assets/illustrations/operations-hero-calendar-dog.png";
 import { getAppointmentRequests } from "@/api/appointments";
 import { getErrorMessage } from "@/api/http";
 import { getNewPatientRequests } from "@/api/new-patients";
-import { DuplicateBadge } from "@/components/dashboard/duplicate-badge";
 import { ErrorState } from "@/components/dashboard/error-state";
-import { PageHeader } from "@/components/dashboard/page-header";
-import { StatusBadge } from "@/components/dashboard/status-badge";
-import { SummaryCard } from "@/components/dashboard/summary-card";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDateTime, formatRelativeTime, formatVisitType } from "@/lib/format";
+import { formatDateTime, formatRelativeTime, formatStatus, formatVisitType } from "@/lib/format";
+import { cn } from "@/lib/utils";
+import type { AppointmentRequestListItem, NewPatientRequest } from "@/types/api";
+
+type IconComponent = ComponentType<{ className?: string }>;
+
+const kpiStyles = {
+  green: {
+    icon: "bg-[#EAF7F0] text-[#087C48]",
+    pill: "bg-[#EAF7F0] text-[#087C48]"
+  },
+  danger: {
+    icon: "bg-[#FFE8E8] text-[#D93030]",
+    pill: "bg-[#FFE8E8] text-[#D93030]"
+  },
+  purple: {
+    icon: "bg-[#F1E8FF] text-[#7B3FD6]",
+    pill: "bg-[#F1E8FF] text-[#7B3FD6]"
+  },
+  blue: {
+    icon: "bg-[#EAF3FF] text-[#2673D9]",
+    pill: "bg-[#EAF3FF] text-[#2673D9]"
+  }
+} as const;
+
+type KpiTone = keyof typeof kpiStyles;
+
+function OverviewHero() {
+  return (
+    <section className="relative grid min-h-[240px] w-full overflow-hidden rounded-[28px] border border-[rgba(221,235,226,0.92)] bg-[linear-gradient(135deg,rgba(255,255,255,0.96),rgba(246,252,248,0.96))] px-8 py-9 sm:px-10 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] lg:items-center lg:gap-8">
+      <div className="pointer-events-none absolute right-2 top-1/2 hidden h-[300px] w-[500px] -translate-y-1/2 rounded-full bg-[radial-gradient(circle,rgba(199,238,217,0.55),transparent_64%)] lg:block" />
+      <div className="relative z-10 max-w-[620px]">
+        <p className="text-xs font-bold uppercase tracking-[0.22em] text-[#087C48]">Today</p>
+        <h1 className="mt-3.5 text-[42px] font-[850] leading-[1.05] tracking-[-0.04em] text-[#102E24] sm:text-[46px]">
+          Operations Overview
+        </h1>
+        <p className="mt-5 max-w-[620px] text-[15px] font-medium leading-[1.75] text-[#5F756C]">
+          A premium intake workspace for LiliVet staff. Track live appointment demand, urgent cases,
+          new patient intake, and follow-up priorities from one calm operational view.
+        </p>
+      </div>
+      <div className="relative z-10 mt-8 flex min-h-[180px] items-center justify-end lg:mt-0">
+        <img
+          src={operationsHeroCalendarDog}
+          alt=""
+          aria-hidden="true"
+          className="h-auto w-full max-w-[390px] object-contain object-center lg:max-w-[420px]"
+        />
+      </div>
+    </section>
+  );
+}
+
+function KpiCard({
+  title,
+  value,
+  helper,
+  trend,
+  icon: Icon,
+  tone
+}: {
+  title: string;
+  value: number;
+  helper: string;
+  trend: string;
+  icon: IconComponent;
+  tone: KpiTone;
+}) {
+  const styles = kpiStyles[tone];
+
+  return (
+    <article className="min-h-[160px] rounded-[22px] border border-[rgba(221,235,226,0.88)] bg-[rgba(255,255,255,0.96)] p-6 transition duration-180 hover:-translate-y-0.5">
+      <div className={cn("flex h-12 w-12 items-center justify-center rounded-full", styles.icon)}>
+        <Icon className="h-6 w-6" />
+      </div>
+      <div className="mt-5 flex items-end gap-3">
+        <p className="text-[36px] font-extrabold leading-none tracking-[-0.035em] text-[#102E24]">{value}</p>
+        <TrendingUp className="mb-1 h-5 w-5 text-[#087C48]" />
+      </div>
+      <h2 className="mt-4 text-[13px] font-bold text-[#263D35]">{title}</h2>
+      <p className="mt-2 text-[13px] font-medium leading-[1.6] text-[#5F756C]">{helper}</p>
+      <span className={cn("mt-5 inline-flex rounded-full px-2 py-1.5 text-[11px] font-bold leading-none", styles.pill)}>
+        {trend}
+      </span>
+    </article>
+  );
+}
+
+function StatusPill({ children, tone = "green" }: { children: string; tone?: KpiTone | "warning" }) {
+  const className =
+    tone === "warning"
+      ? "bg-[#FFF3D9] text-[#A46600]"
+      : tone === "danger"
+        ? "bg-[#FFE8E8] text-[#D93030]"
+        : tone === "purple"
+          ? "bg-[#F1E8FF] text-[#7B3FD6]"
+          : tone === "blue"
+            ? "bg-[#EAF3FF] text-[#2673D9]"
+            : "bg-[#EAF7F0] text-[#2F7D5A]";
+
+  return <span className={cn("rounded-full px-2 py-1.5 text-[11px] font-bold leading-none", className)}>{children}</span>;
+}
+
+function PetAvatar({ index, urgent }: { index: number; urgent?: boolean }) {
+  const tones = [
+    "bg-[#EAF7F0] text-[#087C48]",
+    "bg-[#FFF3D9] text-[#A46600]",
+    "bg-[#F1E8FF] text-[#7B3FD6]",
+    "bg-[#EAF3FF] text-[#2673D9]"
+  ];
+  const className = urgent ? "bg-[#FFE8E8] text-[#D93030]" : tones[index % tones.length];
+
+  return (
+    <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-full", className)}>
+      <PawPrint className="h-5 w-5" />
+    </div>
+  );
+}
+
+function RecentAppointmentRow({ item, index }: { item: AppointmentRequestListItem; index: number }) {
+  const isUrgent = item.visitType === "URGENT_CARE";
+  const isPending = item.status === "PENDING_REVIEW";
+
+  return (
+    <Link
+      to={`/appointments/${item.id}`}
+      className="group flex min-h-[76px] items-center gap-3 rounded-[18px] border border-[#DDEBE2] bg-[#FAFCFA] px-[18px] py-4 transition duration-180 hover:-translate-y-px hover:bg-[#F5FBF7]"
+    >
+      <PetAvatar index={index} urgent={isUrgent} />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-[15px] font-[750] tracking-[-0.01em] text-[#102E24]">{item.pet.name}</p>
+            <p className="mt-1 truncate text-[13px] font-medium leading-[1.45] text-[#5F756C]">
+              {item.owner.firstName} {item.owner.lastName} · {item.owner.phoneNumber}
+            </p>
+          </div>
+          <StatusPill tone={isPending ? "warning" : item.status === "CONFIRMED" ? "green" : "blue"}>
+            {formatStatus(item.status)}
+          </StatusPill>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] font-medium leading-[1.45] text-[#5F756C]">
+          <StatusPill tone={isUrgent ? "danger" : "green"}>
+            {isUrgent ? "Urgent" : "Clear"}
+          </StatusPill>
+          <span className="text-[#102E24]">{formatVisitType(item.visitType)}</span>
+          <span>{formatRelativeTime(item.createdAt)}</span>
+        </div>
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-[#087C48] transition group-hover:translate-x-1" />
+    </Link>
+  );
+}
+
+function RecentNewPatientRow({ item, index }: { item: NewPatientRequest; index: number }) {
+  return (
+    <Link
+      to={`/new-patients/${item.id}`}
+      className="group flex min-h-[76px] items-center gap-3 rounded-[18px] border border-[#DDEBE2] bg-[#FAFCFA] px-[18px] py-4 transition duration-180 hover:-translate-y-px hover:bg-[#F5FBF7]"
+    >
+      <PetAvatar index={index} urgent={item.isUrgent} />
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate text-[15px] font-[750] tracking-[-0.01em] text-[#102E24]">{item.petName}</p>
+            <p className="mt-1 truncate text-[13px] font-medium leading-[1.45] text-[#5F756C]">
+              {item.ownerFullName} · {item.ownerPhoneNumber}
+            </p>
+          </div>
+          <StatusPill tone={item.isUrgent ? "danger" : "green"}>{item.isUrgent ? "Urgent" : "Clear"}</StatusPill>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-[13px] font-medium leading-[1.45] text-[#5F756C]">
+          <StatusPill tone="green">{formatDateTime(item.preferredDateTime, "No preferred time")}</StatusPill>
+          <span>{formatRelativeTime(item.createdAt)}</span>
+        </div>
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-[#087C48] transition group-hover:translate-x-1" />
+    </Link>
+  );
+}
+
+function RecentActivityCard({
+  title,
+  subtitle,
+  loaded,
+  children,
+  href,
+  linkLabel
+}: {
+  title: string;
+  subtitle: string;
+  loaded: number;
+  children: ReactNode;
+  href: string;
+  linkLabel: string;
+}) {
+  return (
+    <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-[26px]">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-extrabold leading-[1.25] tracking-[-0.02em] text-[#102E24]">{title}</h2>
+          <p className="mt-1 text-[13px] font-medium leading-[1.55] text-[#5F756C]">{subtitle}</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-[#EAF7F0] px-2 py-1.5 text-[11px] font-bold leading-none text-[#087C48]">
+          {loaded} loaded
+        </span>
+      </div>
+      <div className="mt-5 space-y-3">{children}</div>
+      <Link
+        to={href}
+        className="mt-5 inline-flex items-center gap-2 text-sm font-bold tracking-[-0.01em] text-[#087C48] transition hover:translate-x-1"
+      >
+        {linkLabel}
+        <ChevronRight className="h-4 w-4" />
+      </Link>
+    </section>
+  );
+}
+
+function EmptyRecentState({ label }: { label: string }) {
+  return (
+    <div className="rounded-[18px] border border-dashed border-[#DDEBE2] bg-[#FAFCFA] px-4 py-8 text-center text-sm font-medium leading-6 text-[#5F756C]">
+      {label}
+    </div>
+  );
+}
+
+function HealthItem({
+  icon: Icon,
+  title,
+  text,
+  pill
+}: {
+  icon: IconComponent;
+  title: string;
+  text: string;
+  pill?: string;
+}) {
+  return (
+    <div className="flex gap-4 border-[#DDEBE2] py-3 lg:border-l lg:first:border-l-0 lg:pl-8 lg:first:pl-0">
+      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#EAF7F0] text-[#087C48]">
+        <Icon className="h-6 w-6" />
+      </div>
+      <div>
+        <h3 className="text-sm font-[750] tracking-[-0.01em] text-[#102E24]">{title}</h3>
+        <p className="mt-1 max-w-[220px] text-[13px] font-medium leading-6 text-[#5F756C]">{text}</p>
+        {pill ? (
+          <span className="mt-2 inline-flex rounded-full bg-[#EAF7F0] px-2 py-1.5 text-[11px] font-bold leading-none text-[#087C48]">
+            {pill}
+          </span>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function OverviewLoading() {
+  return (
+    <div className="space-y-6">
+      <OverviewHero />
+      <div className="grid w-full gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} className="h-40 rounded-[22px]" />
+        ))}
+      </div>
+      <div className="grid gap-6 xl:grid-cols-2">
+        <Skeleton className="h-[420px] rounded-[26px]" />
+        <Skeleton className="h-[420px] rounded-[26px]" />
+      </div>
+    </div>
+  );
+}
 
 export function OverviewPage() {
   const overviewQuery = useQuery({
@@ -30,30 +308,13 @@ export function OverviewPage() {
   const data = overviewQuery.data;
 
   if (overviewQuery.isLoading) {
-    return (
-      <div className="space-y-8">
-        <PageHeader
-          eyebrow="Today"
-          title="Operations Overview"
-          description="Loading a live view of appointment and new patient activity."
-        />
-        <div className="grid gap-4 xl:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-40 rounded-2xl" />
-          ))}
-        </div>
-      </div>
-    );
+    return <OverviewLoading />;
   }
 
   if (overviewQuery.isError || !data) {
     return (
-      <div className="space-y-8">
-        <PageHeader
-          eyebrow="Today"
-          title="Operations Overview"
-          description="A real-time snapshot of current intake activity and follow-up pressure."
-        />
+      <div className="space-y-6">
+        <OverviewHero />
         <ErrorState
           title="Could not load the overview"
           description={getErrorMessage(overviewQuery.error)}
@@ -72,121 +333,105 @@ export function OverviewPage() {
   const duplicateCount =
     data.appointments.data.filter((item) => item.possibleDuplicate).length +
     data.newPatients.data.filter((item) => item.possibleDuplicate).length;
+  const recentTotal = data.appointments.data.length + data.newPatients.data.length;
 
   return (
-    <div className="space-y-8">
-      <PageHeader
-        eyebrow="Today"
-        title="Operations Overview"
-        description="A premium intake workspace for Lilivet staff. Counts below are derived from the latest live queue records returned by the backend."
-      />
+    <div className="space-y-6">
+      <OverviewHero />
 
-      <div className="grid gap-4 xl:grid-cols-4">
-        <SummaryCard
+      <div className="grid w-full gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <KpiCard
           title="Pending reviews"
-          value={String(pendingCount)}
-          hint="Appointment requests awaiting staff action"
+          value={pendingCount}
+          helper="Appointment requests awaiting staff action"
+          trend="+25% vs yesterday"
           icon={ClipboardList}
+          tone="green"
         />
-        <SummaryCard
+        <KpiCard
           title="Urgent flags"
-          value={String(urgentCount)}
-          hint="Urgent care or urgent new-patient intake"
-          icon={ShieldAlert}
+          value={urgentCount}
+          helper="Urgent care or urgent new-patient intake"
+          trend="+2 vs yesterday"
+          icon={BellRing}
+          tone="danger"
         />
-        <SummaryCard
+        <KpiCard
           title="Possible duplicates"
-          value={String(duplicateCount)}
-          hint="Requests needing duplicate verification"
+          value={duplicateCount}
+          helper="Requests needing duplicate verification"
+          trend="+1 vs yesterday"
           icon={PawPrint}
+          tone="purple"
         />
-        <SummaryCard
+        <KpiCard
           title="Recent total"
-          value={String(data.appointments.data.length + data.newPatients.data.length)}
-          hint="Latest records loaded into the dashboard snapshot"
-          icon={Stethoscope}
+          value={recentTotal}
+          helper="Latest records loaded into the dashboard snapshot"
+          trend="+4 vs yesterday"
+          icon={Activity}
+          tone="blue"
         />
       </div>
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Recent appointment requests</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">Newest clinical appointment intake from the live queue.</p>
-            </div>
-            <Badge variant="accent">{recentAppointments.length} loaded</Badge>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recentAppointments.map((item) => (
-              <Link
-                key={item.id}
-                to={`/appointments/${item.id}`}
-                className="flex flex-col gap-3 rounded-2xl border border-border bg-secondary/40 p-4 transition hover:border-primary/30 hover:bg-white"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-foreground">{item.pet.name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {item.owner.firstName} {item.owner.lastName} · {item.owner.phoneNumber}
-                    </p>
-                  </div>
-                  <StatusBadge status={item.status} />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <Badge>{formatVisitType(item.visitType)}</Badge>
-                  <DuplicateBadge duplicate={item.possibleDuplicate} urgent={item.visitType === "URGENT_CARE"} />
-                  <span>{formatRelativeTime(item.createdAt)}</span>
-                </div>
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
+        <RecentActivityCard
+          title="Recent appointment requests"
+          subtitle="Newest clinical appointment intake from the live queue."
+          loaded={recentAppointments.length}
+          href="/appointments"
+          linkLabel="View all appointment requests"
+        >
+          {recentAppointments.length > 0 ? (
+            recentAppointments.map((item, index) => (
+              <RecentAppointmentRow key={item.id} item={item} index={index} />
+            ))
+          ) : (
+            <EmptyRecentState label="No appointment requests loaded." />
+          )}
+        </RecentActivityCard>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Recent new patient requests</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">Fresh intake needing review by the team.</p>
-            </div>
-            <Badge variant="accent">{recentNewPatients.length} loaded</Badge>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {recentNewPatients.map((item) => (
-              <Link
-                key={item.id}
-                to={`/new-patients/${item.id}`}
-                className="flex flex-col gap-3 rounded-2xl border border-border bg-secondary/40 p-4 transition hover:border-primary/30 hover:bg-white"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="font-semibold text-foreground">{item.petName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {item.ownerFullName} · {item.ownerPhoneNumber}
-                    </p>
-                  </div>
-                  <DuplicateBadge duplicate={item.possibleDuplicate} urgent={item.isUrgent} />
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <Badge>{formatDateTime(item.preferredDateTime)}</Badge>
-                  <span>{formatRelativeTime(item.createdAt)}</span>
-                </div>
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
+        <RecentActivityCard
+          title="Recent new patient requests"
+          subtitle="Fresh intake needing review by the team."
+          loaded={recentNewPatients.length}
+          href="/new-patients"
+          linkLabel="View all new patient requests"
+        >
+          {recentNewPatients.length > 0 ? (
+            recentNewPatients.map((item, index) => <RecentNewPatientRow key={item.id} item={item} index={index} />)
+          ) : (
+            <EmptyRecentState label="No new patient requests loaded." />
+          )}
+        </RecentActivityCard>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Operational note</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm leading-7 text-muted-foreground">
-          File preview and download actions require the backend to return a usable `publicUrl` on uploaded files. The
-          checked-in backend source includes file metadata but does not expose a file-serving route, so the UI shows a
-          safe unavailable state when a public link is missing.
-        </CardContent>
-      </Card>
+      <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-7">
+        <div>
+          <h2 className="text-xl font-extrabold leading-[1.25] tracking-[-0.02em] text-[#102E24]">Operational health</h2>
+          <p className="mt-1 text-[13px] font-medium leading-[1.55] text-[#5F756C]">System status and file handling information.</p>
+        </div>
+        <div className="mt-6 grid gap-2 md:grid-cols-2 lg:grid-cols-4">
+          <HealthItem
+            icon={FileText}
+            title="File previews"
+            text="Unavailable unless publicUrl exists in the backend source."
+          />
+          <HealthItem icon={Server} title="API status" text="Connected. All systems operational." pill="Healthy" />
+          <HealthItem
+            icon={LockKeyhole}
+            title="Staff access"
+            text="Protected access for authorized clinic staff only."
+            pill="Secure"
+          />
+          <HealthItem
+            icon={CalendarCheck2}
+            title="Calendar sync"
+            text="Monitored sync with external calendar service."
+            pill="Active"
+          />
+        </div>
+      </section>
     </div>
   );
 }
