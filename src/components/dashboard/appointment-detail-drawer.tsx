@@ -759,19 +759,31 @@ export function AppointmentDetailDrawer({
         className="inset-y-4 right-4 w-[min(960px,calc(100vw-48px))] rounded-[24px] border border-white/80 shadow-[0_28px_90px_rgba(16,46,36,0.22)] max-[900px]:inset-0 max-[900px]:h-screen max-[900px]:w-screen max-[900px]:rounded-none"
       >
         {detailQuery.isLoading ? (
-          <div className="space-y-5 p-8">
-            <Skeleton className="h-14 w-2/3" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-96 w-full" />
-          </div>
+          <>
+            <div className="sr-only">
+              <DialogTitle>Loading appointment request</DialogTitle>
+              <DialogDescription>Loading the selected appointment request details.</DialogDescription>
+            </div>
+            <div className="space-y-5 p-8">
+              <Skeleton className="h-14 w-2/3" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-96 w-full" />
+            </div>
+          </>
         ) : detailQuery.isError ? (
-          <div className="p-8">
-            <ErrorState
-              title="Could not load appointment detail"
-              description={getErrorMessage(detailQuery.error)}
-              onRetry={() => detailQuery.refetch()}
-            />
-          </div>
+          <>
+            <div className="sr-only">
+              <DialogTitle>Appointment request unavailable</DialogTitle>
+              <DialogDescription>The selected appointment request could not be loaded.</DialogDescription>
+            </div>
+            <div className="p-8">
+              <ErrorState
+                title="Could not load appointment detail"
+                description={getErrorMessage(detailQuery.error)}
+                onRetry={() => detailQuery.refetch()}
+              />
+            </div>
+          </>
         ) : request ? (
           <div className="flex min-h-0 flex-1 flex-col bg-white">
             <div className="sticky top-0 z-30 border-b border-[#E6EEE8] bg-white px-8 pb-5 pt-7 max-sm:px-5">
