@@ -1,5 +1,8 @@
-import { useMemo, useState } from "react";
-import { Download, ExternalLink, Eye, FileText, Image as ImageIcon, Lock } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Download, ExternalLink, Eye, FileText, Image as ImageIcon } from "lucide-react";
+import { toast } from "sonner";
+import { getErrorMessage } from "@/api/http";
+import { fetchStaffFile } from "@/api/files";
 import {
   Dialog,
   DialogContent,
@@ -17,12 +20,107 @@ function getAccessibleUrl(file: UploadedFile) {
   return file.publicUrl ?? null;
 }
 
+function clickTemporaryLink(url: string, options?: { download?: string; target?: "_blank" }) {
+  const anchor = document.createElement("a");
+  anchor.href = url;
+
+  if (options?.download) {
+    anchor.download = options.download;
+  }
+
+  if (options?.target) {
+    anchor.target = options.target;
+    anchor.rel = "noreferrer";
+  }
+
+  anchor.style.display = "none";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
 export function FilePreviewList({ files }: { files: UploadedFile[] }) {
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
+  const [resolvedUrls, setResolvedUrls] = useState<Record<string, string>>({});
+  const [pendingAction, setPendingAction] = useState<{ fileId: string; action: "preview" | "open" | "download" } | null>(
+    null
+  );
+  const resolvedUrlsRef = useRef<Record<string, string>>({});
+
+  useEffect(() => {
+    resolvedUrlsRef.current = resolvedUrls;
+  }, [resolvedUrls]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(resolvedUrlsRef.current).forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, []);
+
   const activeFile = useMemo(
     () => files.find((file) => file.id === activeFileId) ?? null,
     [activeFileId, files]
   );
+  const activeFileUrl = activeFile ? resolvedUrls[activeFile.id] ?? getAccessibleUrl(activeFile) : null;
+
+  async function resolveFileUrl(file: UploadedFile) {
+    const directUrl = getAccessibleUrl(file);
+    if (directUrl) {
+      return directUrl;
+    }
+
+    const existingResolvedUrl = resolvedUrlsRef.current[file.id];
+    if (existingResolvedUrl) {
+      return existingResolvedUrl;
+    }
+
+    const blob = await fetchStaffFile(file.id);
+    const objectUrl = URL.createObjectURL(blob);
+
+    setResolvedUrls((current) => {
+      if (current[file.id]) {
+        URL.revokeObjectURL(objectUrl);
+        return current;
+      }
+
+      const next = {
+        ...current,
+        [file.id]: objectUrl
+      };
+      resolvedUrlsRef.current = next;
+      return next;
+    });
+
+    return objectUrl;
+  }
+
+  async function withResolvedFileUrl(
+    file: UploadedFile,
+    action: "preview" | "open" | "download",
+    handler: (url: string) => void
+  ) {
+    setPendingAction({ fileId: file.id, action });
+
+    try {
+      const url = await resolveFileUrl(file);
+      handler(url);
+    } catch (error) {
+      const fallback =
+        action === "preview"
+          ? "Unable to load file preview"
+          : action === "open"
+            ? "Unable to open file"
+            : "Unable to download file";
+
+      toast.error(getErrorMessage(error, fallback));
+    } finally {
+      setPendingAction((current) => (current?.fileId === file.id && current.action === action ? null : current));
+    }
+  }
+
+  function isPending(fileId: string, action: "preview" | "open" | "download") {
+    return pendingAction?.fileId === fileId && pendingAction.action === action;
+  }
 
   if (files.length === 0) {
     return (
@@ -39,7 +137,6 @@ export function FilePreviewList({ files }: { files: UploadedFile[] }) {
       <div className="space-y-3">
         {files.map((file) => {
           const fileKind = getFileKind(file);
-          const accessibleUrl = getAccessibleUrl(file);
           const Icon = fileKind === "image" ? ImageIcon : FileText;
 
           return (
@@ -54,14 +151,8 @@ export function FilePreviewList({ files }: { files: UploadedFile[] }) {
                 <div className="space-y-1">
                   <p className="font-semibold text-foreground">{file.originalName}</p>
                   <p className="text-xs text-muted-foreground">
-                    {file.mimeType} · {(file.sizeBytes / 1024 / 1024).toFixed(2)} MB
+                    {file.mimeType} - {(file.sizeBytes / 1024 / 1024).toFixed(2)} MB
                   </p>
-                  {!accessibleUrl ? (
-                    <p className="flex items-center gap-1 text-xs text-warning">
-                      <Lock className="h-3.5 w-3.5" />
-                      Backend did not provide a public file URL for preview/download.
-                    </p>
-                  ) : null}
                 </div>
               </div>
 
@@ -69,37 +160,41 @@ export function FilePreviewList({ files }: { files: UploadedFile[] }) {
                 <Button
                   variant="secondary"
                   size="sm"
-                  disabled={!accessibleUrl}
-                  onClick={() => setActiveFileId(file.id)}
+                  disabled={isPending(file.id, "preview")}
+                  onClick={() =>
+                    void withResolvedFileUrl(file, "preview", () => {
+                      setActiveFileId(file.id);
+                    })
+                  }
                 >
                   <Eye className="h-4 w-4" />
                   Preview
                 </Button>
-                <Button variant="outline" size="sm" asChild={Boolean(accessibleUrl)}>
-                  {accessibleUrl ? (
-                    <a href={accessibleUrl} target="_blank" rel="noreferrer">
-                      <ExternalLink className="h-4 w-4" />
-                      Open
-                    </a>
-                  ) : (
-                    <span>
-                      <ExternalLink className="h-4 w-4" />
-                      Open
-                    </span>
-                  )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isPending(file.id, "open")}
+                  onClick={() =>
+                    void withResolvedFileUrl(file, "open", (url) => {
+                      clickTemporaryLink(url, { target: "_blank" });
+                    })
+                  }
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open
                 </Button>
-                <Button variant="outline" size="sm" asChild={Boolean(accessibleUrl)}>
-                  {accessibleUrl ? (
-                    <a href={accessibleUrl} download>
-                      <Download className="h-4 w-4" />
-                      Download
-                    </a>
-                  ) : (
-                    <span>
-                      <Download className="h-4 w-4" />
-                      Download
-                    </span>
-                  )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isPending(file.id, "download")}
+                  onClick={() =>
+                    void withResolvedFileUrl(file, "download", (url) => {
+                      clickTemporaryLink(url, { download: file.originalName });
+                    })
+                  }
+                >
+                  <Download className="h-4 w-4" />
+                  Download
                 </Button>
               </div>
             </div>
@@ -115,23 +210,23 @@ export function FilePreviewList({ files }: { files: UploadedFile[] }) {
               <DialogDescription>{activeFile.mimeType}</DialogDescription>
             </DialogHeader>
             <div className="min-h-[70vh] bg-background p-4">
-              {getAccessibleUrl(activeFile) ? (
+              {activeFileUrl ? (
                 getFileKind(activeFile) === "image" ? (
                   <img
-                    src={getAccessibleUrl(activeFile)!}
+                    src={activeFileUrl}
                     alt={activeFile.originalName}
                     className="mx-auto max-h-[65vh] rounded-2xl object-contain shadow-soft"
                   />
                 ) : (
                   <iframe
-                    src={getAccessibleUrl(activeFile)!}
+                    src={activeFileUrl}
                     title={activeFile.originalName}
                     className="h-[65vh] w-full rounded-2xl border border-border bg-white"
                   />
                 )
               ) : (
                 <div className="flex h-[65vh] items-center justify-center rounded-2xl border border-dashed border-border bg-white text-sm text-muted-foreground">
-                  Preview unavailable because the backend response does not include a public file URL.
+                  Preview unavailable.
                 </div>
               )}
             </div>
