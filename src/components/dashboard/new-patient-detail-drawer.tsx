@@ -57,19 +57,31 @@ export function NewPatientDetailDrawer({
     <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent>
         {detailQuery.isLoading ? (
-          <div className="space-y-5 p-6">
-            <Skeleton className="h-10 w-2/3" />
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-72 w-full" />
-          </div>
+          <>
+            <DialogHeader className="sr-only">
+              <DialogTitle>Loading new patient request</DialogTitle>
+              <DialogDescription>Loading the selected new patient request details.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-5 p-6">
+              <Skeleton className="h-10 w-2/3" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-72 w-full" />
+            </div>
+          </>
         ) : detailQuery.isError ? (
-          <div className="p-6">
-            <ErrorState
-              title="Could not load new patient detail"
-              description={getErrorMessage(detailQuery.error)}
-              onRetry={() => detailQuery.refetch()}
-            />
-          </div>
+          <>
+            <DialogHeader className="sr-only">
+              <DialogTitle>New patient request unavailable</DialogTitle>
+              <DialogDescription>The selected new patient request could not be loaded.</DialogDescription>
+            </DialogHeader>
+            <div className="p-6">
+              <ErrorState
+                title="Could not load new patient detail"
+                description={getErrorMessage(detailQuery.error)}
+                onRetry={() => detailQuery.refetch()}
+              />
+            </div>
+          </>
         ) : request ? (
           <>
             <DialogHeader className="space-y-4">
