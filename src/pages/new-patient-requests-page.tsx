@@ -24,11 +24,18 @@ import { ErrorState } from "@/components/dashboard/error-state";
 import { NewPatientDetailDrawer } from "@/components/dashboard/new-patient-detail-drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
-import { formatDateTime, formatRelativeTime, formatSpecies, isToday } from "@/lib/format";
-import type { NewPatientRequest } from "@/types/api";
+import {
+  formatDateTime,
+  formatNewPatientReferralSource,
+  formatRelativeTime,
+  formatSpecies,
+  isToday
+} from "@/lib/format";
+import type { NewPatientRequest, NewPatientReferralSource } from "@/types/api";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -282,6 +289,7 @@ export function NewPatientRequestsPage() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [referralSource, setReferralSource] = useState<NewPatientReferralSource | "NOT_CAPTURED" | "ALL">("ALL");
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [duplicateOnly, setDuplicateOnly] = useState(false);
   const [needsReviewToday, setNeedsReviewToday] = useState(false);
@@ -292,9 +300,10 @@ export function NewPatientRequestsPage() {
       search: debouncedSearch.trim(),
       dateFrom,
       dateTo,
+      referralSource,
       limit: 20
     }),
-    [dateFrom, dateTo, debouncedSearch]
+    [dateFrom, dateTo, debouncedSearch, referralSource]
   );
 
   const requestsQuery = useInfiniteQuery({
@@ -329,6 +338,7 @@ export function NewPatientRequestsPage() {
     setSearch("");
     setDateFrom("");
     setDateTo("");
+    setReferralSource("ALL");
     setUrgentOnly(false);
     setDuplicateOnly(false);
     setNeedsReviewToday(false);
@@ -380,7 +390,7 @@ export function NewPatientRequestsPage() {
             Narrow the queue by urgency, duplicates, date, or search.
           </p>
         </div>
-        <div className="mt-5 grid gap-3 lg:grid-cols-[2fr_0.9fr_auto_0.9fr_auto]">
+        <div className="mt-5 grid gap-3 lg:grid-cols-[2fr_0.9fr_auto_0.9fr_1.2fr_auto]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#829A91]" />
             <Input
@@ -403,6 +413,32 @@ export function NewPatientRequestsPage() {
             onChange={(event) => setDateTo(event.target.value)}
             className="h-12 rounded-2xl border-[#DDEBE2] bg-white text-sm font-medium"
           />
+          <Select
+            value={referralSource}
+            onChange={(event) =>
+              setReferralSource(
+                event.target.value as NewPatientReferralSource | "NOT_CAPTURED" | "ALL"
+              )
+            }
+            className="h-12 rounded-2xl border-[#DDEBE2] bg-white text-sm font-medium"
+          >
+            <option value="ALL">All referral sources</option>
+            <option value="NOT_CAPTURED">Not captured</option>
+            <option value="PET_PARADISE">{formatNewPatientReferralSource("PET_PARADISE")}</option>
+            <option value="WEBSITE">{formatNewPatientReferralSource("WEBSITE")}</option>
+            <option value="GOOGLE">{formatNewPatientReferralSource("GOOGLE")}</option>
+            <option value="PET_BARN">{formatNewPatientReferralSource("PET_BARN")}</option>
+            <option value="WELCOME_HOME_MAGAZINE">
+              {formatNewPatientReferralSource("WELCOME_HOME_MAGAZINE")}
+            </option>
+            <option value="REFERRED_BY_ANOTHER_VETERINARIAN">
+              {formatNewPatientReferralSource("REFERRED_BY_ANOTHER_VETERINARIAN")}
+            </option>
+            <option value="REFERRED_BY_FRIEND_OR_FAMILY_MEMBER">
+              {formatNewPatientReferralSource("REFERRED_BY_FRIEND_OR_FAMILY_MEMBER")}
+            </option>
+            <option value="OTHER">{formatNewPatientReferralSource("OTHER")}</option>
+          </Select>
           <Button variant="ghost" className="justify-self-start text-sm font-bold text-[#087C48]" onClick={clearFilters}>
             Reset
           </Button>

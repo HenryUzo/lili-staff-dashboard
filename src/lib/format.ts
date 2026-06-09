@@ -3,6 +3,7 @@ import type {
   CalendarSyncStatus,
   AppointmentPreferredSelection,
   AppointmentRequestStatus,
+  NewPatientReferralSource,
   PetSpecies,
   UploadedFile
 } from "@/types/api";
@@ -75,6 +76,21 @@ export function formatVisitType(value: string) {
 
 export function formatSpecies(species: PetSpecies) {
   return species === "DOG" ? "Dog" : "Cat";
+}
+
+export function formatNewPatientReferralSource(
+  source?: NewPatientReferralSource | "NOT_CAPTURED" | null,
+  fallback = "Not captured"
+) {
+  if (!source || source === "NOT_CAPTURED") {
+    return fallback;
+  }
+
+  return source
+    .toLowerCase()
+    .split("_")
+    .map((part) => part[0]?.toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 export function formatPreferredSelections(selections: AppointmentPreferredSelection[]) {

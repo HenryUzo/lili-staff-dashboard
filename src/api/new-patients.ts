@@ -8,6 +8,10 @@ export async function getNewPatientRequests(filters: NewPatientListFilters, curs
       cursor: cursor ?? undefined,
       limit: filters.limit ?? 25,
       search: filters.search || undefined,
+      referralSource:
+        filters.referralSource && filters.referralSource !== "ALL"
+          ? filters.referralSource
+          : undefined,
       dateFrom: toDateTimeRange(filters.dateFrom),
       dateTo: toDateTimeRange(filters.dateTo, true)
     }
