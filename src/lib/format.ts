@@ -93,6 +93,20 @@ export function formatNewPatientReferralSource(
     .join(" ");
 }
 
+export function formatNewPatientReferralSummary(
+  source?: NewPatientReferralSource | "NOT_CAPTURED" | null,
+  otherText?: string | null,
+  fallback = "Not captured"
+) {
+  const label = formatNewPatientReferralSource(source, fallback);
+
+  if (source === "OTHER" && otherText?.trim()) {
+    return `${label} - ${otherText.trim()}`;
+  }
+
+  return label;
+}
+
 export function formatPreferredSelections(selections: AppointmentPreferredSelection[]) {
   if (selections.length === 0) return "No preferences captured";
   return selections

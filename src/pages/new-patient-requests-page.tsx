@@ -30,6 +30,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
 import {
   formatDateTime,
+  formatNewPatientReferralSummary,
   formatNewPatientReferralSource,
   formatRelativeTime,
   formatSpecies,
@@ -217,7 +218,7 @@ function NewPatientRow({ item, index, onOpen }: { item: NewPatientRequest; index
     <button
       type="button"
       onClick={onOpen}
-      className="grid w-full gap-4 bg-white px-5 py-4 text-left transition duration-180 hover:-translate-y-px hover:bg-[#FAFCFA] focus-visible:bg-[#FAFCFA] focus-visible:outline-none xl:grid-cols-[0.9fr_1.45fr_1.2fr_1.35fr_0.95fr_0.7fr]"
+      className="grid w-full gap-4 bg-white px-5 py-4 text-left transition duration-180 hover:-translate-y-px hover:bg-[#FAFCFA] focus-visible:bg-[#FAFCFA] focus-visible:outline-none xl:grid-cols-[0.8fr_1.3fr_1.05fr_1.15fr_1.2fr_0.95fr_0.65fr]"
     >
       <div>
         <PriorityChips urgent={item.isUrgent} duplicate={item.possibleDuplicate} />
@@ -232,6 +233,18 @@ function NewPatientRow({ item, index, onOpen }: { item: NewPatientRequest; index
           <p className="mt-1 text-[13px] font-medium leading-[1.45] text-[#5F756C]">{item.ownerFullName}</p>
           <p className="mt-1 text-[13px] font-medium leading-[1.45] text-[#5F756C]">{item.ownerPhoneNumber}</p>
         </div>
+      </div>
+      <div title={formatNewPatientReferralSummary(item.referralSource, item.referralSourceOther)}>
+        <p className="text-sm font-bold leading-6 text-[#102E24]">
+          {formatNewPatientReferralSource(item.referralSource)}
+        </p>
+        <p className="mt-1 line-clamp-2 text-[13px] font-medium leading-[1.45] text-[#5F756C]">
+          {item.referralSource === "OTHER" && item.referralSourceOther
+            ? item.referralSourceOther
+            : item.referralSourceCapturedAt
+              ? `Captured ${formatRelativeTime(item.referralSourceCapturedAt)}`
+              : "Waiting on referral source"}
+        </p>
       </div>
       <div>
         <p className="text-sm font-bold leading-6 text-[#102E24]">
@@ -510,9 +523,10 @@ export function NewPatientRequestsPage() {
             <>
               <div className="overflow-hidden rounded-[20px] border border-[#DDEBE2] bg-white">
                 <div className="max-h-[860px] overflow-y-auto">
-                  <div className="sticky top-0 z-10 hidden min-h-[54px] grid-cols-[0.9fr_1.45fr_1.2fr_1.35fr_0.95fr_0.7fr] gap-4 border-b border-[#DDEBE2] bg-[#EAF7F0] px-5 py-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6F8F82] xl:grid">
+                  <div className="sticky top-0 z-10 hidden min-h-[54px] grid-cols-[0.8fr_1.3fr_1.05fr_1.15fr_1.2fr_0.95fr_0.65fr] gap-4 border-b border-[#DDEBE2] bg-[#EAF7F0] px-5 py-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6F8F82] xl:grid">
                     <div>Priority</div>
                     <div>Patient / Owner</div>
+                    <div>Referral</div>
                     <div>Requested visit</div>
                     <div>Reason</div>
                     <div>Submitted</div>

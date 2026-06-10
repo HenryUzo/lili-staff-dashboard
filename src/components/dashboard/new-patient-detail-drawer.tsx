@@ -15,7 +15,7 @@ import {
   DialogTitle
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatDateTime, formatNewPatientReferralSource, formatSpecies } from "@/lib/format";
+import { formatDateTime, formatNewPatientReferralSummary, formatSpecies } from "@/lib/format";
 
 function DetailField({ label, value }: { label: string; value?: string | number | null | boolean }) {
   return (
@@ -160,12 +160,9 @@ export function NewPatientDetailDrawer({
                   <DetailField label="Previous vet clinic" value={request.previousVetClinic} />
                   <DetailField
                     label="How they found Lili Vet"
-                    value={
-                      request.referralSource === "OTHER" && request.referralSourceOther
-                        ? `${formatNewPatientReferralSource(request.referralSource)} - ${request.referralSourceOther}`
-                        : formatNewPatientReferralSource(request.referralSource)
-                    }
+                    value={formatNewPatientReferralSummary(request.referralSource, request.referralSourceOther)}
                   />
+                  <DetailField label="Referral captured" value={formatDateTime(request.referralSourceCapturedAt)} />
                 </CardContent>
               </Card>
 
