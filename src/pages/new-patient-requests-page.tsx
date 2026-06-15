@@ -24,11 +24,19 @@ import { ErrorState } from "@/components/dashboard/error-state";
 import { NewPatientDetailDrawer } from "@/components/dashboard/new-patient-detail-drawer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
-import { formatDateTime, formatRelativeTime, formatSpecies, isToday } from "@/lib/format";
-import type { NewPatientRequest } from "@/types/api";
+import {
+  formatDateTime,
+  formatNewPatientReferralSummary,
+  formatNewPatientReferralSource,
+  formatRelativeTime,
+  formatSpecies,
+  isToday
+} from "@/lib/format";
+import type { NewPatientRequest, NewPatientReferralSource } from "@/types/api";
 
 type IconComponent = ComponentType<{ className?: string }>;
 
@@ -210,7 +218,7 @@ function NewPatientRow({ item, index, onOpen }: { item: NewPatientRequest; index
     <button
       type="button"
       onClick={onOpen}
-      className="grid w-full gap-4 bg-white px-5 py-4 text-left transition duration-180 hover:-translate-y-px hover:bg-[#FAFCFA] focus-visible:bg-[#FAFCFA] focus-visible:outline-none xl:grid-cols-[0.9fr_1.45fr_1.2fr_1.35fr_0.95fr_0.7fr]"
+      className="grid w-full gap-4 bg-white px-5 py-4 text-left transition duration-180 hover:-translate-y-px hover:bg-[#FAFCFA] focus-visible:bg-[#FAFCFA] focus-visible:outline-none xl:grid-cols-[0.8fr_1.3fr_1.05fr_1.15fr_1.2fr_0.95fr_0.65fr]"
     >
       <div>
         <PriorityChips urgent={item.isUrgent} duplicate={item.possibleDuplicate} />
@@ -225,6 +233,18 @@ function NewPatientRow({ item, index, onOpen }: { item: NewPatientRequest; index
           <p className="mt-1 text-[13px] font-medium leading-[1.45] text-[#5F756C]">{item.ownerFullName}</p>
           <p className="mt-1 text-[13px] font-medium leading-[1.45] text-[#5F756C]">{item.ownerPhoneNumber}</p>
         </div>
+      </div>
+      <div title={formatNewPatientReferralSummary(item.referralSource, item.referralSourceOther)}>
+        <p className="text-sm font-bold leading-6 text-[#102E24]">
+          {formatNewPatientReferralSource(item.referralSource)}
+        </p>
+        <p className="mt-1 line-clamp-2 text-[13px] font-medium leading-[1.45] text-[#5F756C]">
+          {item.referralSource === "OTHER" && item.referralSourceOther
+            ? item.referralSourceOther
+            : item.referralSourceCapturedAt
+              ? `Captured ${formatRelativeTime(item.referralSourceCapturedAt)}`
+              : "Waiting on referral source"}
+        </p>
       </div>
       <div>
         <p className="text-sm font-bold leading-6 text-[#102E24]">
@@ -282,6 +302,7 @@ export function NewPatientRequestsPage() {
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [referralSource, setReferralSource] = useState<NewPatientReferralSource | "NOT_CAPTURED" | "ALL">("ALL");
   const [urgentOnly, setUrgentOnly] = useState(false);
   const [duplicateOnly, setDuplicateOnly] = useState(false);
   const [needsReviewToday, setNeedsReviewToday] = useState(false);
@@ -292,9 +313,10 @@ export function NewPatientRequestsPage() {
       search: debouncedSearch.trim(),
       dateFrom,
       dateTo,
+      referralSource,
       limit: 20
     }),
-    [dateFrom, dateTo, debouncedSearch]
+    [dateFrom, dateTo, debouncedSearch, referralSource]
   );
 
   const requestsQuery = useInfiniteQuery({
@@ -329,6 +351,7 @@ export function NewPatientRequestsPage() {
     setSearch("");
     setDateFrom("");
     setDateTo("");
+    setReferralSource("ALL");
     setUrgentOnly(false);
     setDuplicateOnly(false);
     setNeedsReviewToday(false);
@@ -380,7 +403,7 @@ export function NewPatientRequestsPage() {
             Narrow the queue by urgency, duplicates, date, or search.
           </p>
         </div>
-        <div className="mt-5 grid gap-3 lg:grid-cols-[2fr_0.9fr_auto_0.9fr_auto]">
+        <div className="mt-5 grid gap-3 lg:grid-cols-[2fr_0.9fr_auto_0.9fr_1.2fr_auto]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#829A91]" />
             <Input
@@ -403,6 +426,32 @@ export function NewPatientRequestsPage() {
             onChange={(event) => setDateTo(event.target.value)}
             className="h-12 rounded-2xl border-[#DDEBE2] bg-white text-sm font-medium"
           />
+          <Select
+            value={referralSource}
+            onChange={(event) =>
+              setReferralSource(
+                event.target.value as NewPatientReferralSource | "NOT_CAPTURED" | "ALL"
+              )
+            }
+            className="h-12 rounded-2xl border-[#DDEBE2] bg-white text-sm font-medium"
+          >
+            <option value="ALL">All referral sources</option>
+            <option value="NOT_CAPTURED">Not captured</option>
+            <option value="PET_PARADISE">{formatNewPatientReferralSource("PET_PARADISE")}</option>
+            <option value="WEBSITE">{formatNewPatientReferralSource("WEBSITE")}</option>
+            <option value="GOOGLE">{formatNewPatientReferralSource("GOOGLE")}</option>
+            <option value="PET_BARN">{formatNewPatientReferralSource("PET_BARN")}</option>
+            <option value="WELCOME_HOME_MAGAZINE">
+              {formatNewPatientReferralSource("WELCOME_HOME_MAGAZINE")}
+            </option>
+            <option value="REFERRED_BY_ANOTHER_VETERINARIAN">
+              {formatNewPatientReferralSource("REFERRED_BY_ANOTHER_VETERINARIAN")}
+            </option>
+            <option value="REFERRED_BY_FRIEND_OR_FAMILY_MEMBER">
+              {formatNewPatientReferralSource("REFERRED_BY_FRIEND_OR_FAMILY_MEMBER")}
+            </option>
+            <option value="OTHER">{formatNewPatientReferralSource("OTHER")}</option>
+          </Select>
           <Button variant="ghost" className="justify-self-start text-sm font-bold text-[#087C48]" onClick={clearFilters}>
             Reset
           </Button>
@@ -474,9 +523,10 @@ export function NewPatientRequestsPage() {
             <>
               <div className="overflow-hidden rounded-[20px] border border-[#DDEBE2] bg-white">
                 <div className="max-h-[860px] overflow-y-auto">
-                  <div className="sticky top-0 z-10 hidden min-h-[54px] grid-cols-[0.9fr_1.45fr_1.2fr_1.35fr_0.95fr_0.7fr] gap-4 border-b border-[#DDEBE2] bg-[#EAF7F0] px-5 py-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6F8F82] xl:grid">
+                  <div className="sticky top-0 z-10 hidden min-h-[54px] grid-cols-[0.8fr_1.3fr_1.05fr_1.15fr_1.2fr_0.95fr_0.65fr] gap-4 border-b border-[#DDEBE2] bg-[#EAF7F0] px-5 py-4 text-[11px] font-bold uppercase tracking-[0.14em] text-[#6F8F82] xl:grid">
                     <div>Priority</div>
                     <div>Patient / Owner</div>
+                    <div>Referral</div>
                     <div>Requested visit</div>
                     <div>Reason</div>
                     <div>Submitted</div>

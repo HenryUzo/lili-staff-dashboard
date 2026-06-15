@@ -7,6 +7,15 @@ export type AppointmentRequestStatus =
   | "COMPLETED"
   | "NO_SHOW";
 export type CalendarSyncStatus = "NOT_SYNCED" | "SYNCED" | "FAILED";
+export type NewPatientReferralSource =
+  | "PET_PARADISE"
+  | "WEBSITE"
+  | "GOOGLE"
+  | "PET_BARN"
+  | "WELCOME_HOME_MAGAZINE"
+  | "REFERRED_BY_ANOTHER_VETERINARIAN"
+  | "REFERRED_BY_FRIEND_OR_FAMILY_MEMBER"
+  | "OTHER";
 export type VisitType =
   | "URGENT_CARE"
   | "WELLNESS_EXAM"
@@ -153,6 +162,9 @@ export interface NewPatientRequest {
   timezone: string | null;
   previousVetClinic: string | null;
   consentToElectronicComms: boolean;
+  referralSource: NewPatientReferralSource | null;
+  referralSourceOther: string | null;
+  referralSourceCapturedAt: string | null;
   ownerId: string | null;
   petId: string | null;
   possibleDuplicate: boolean;
@@ -180,6 +192,7 @@ export interface NewPatientListFilters {
   dateFrom?: string;
   dateTo?: string;
   limit?: number;
+  referralSource?: NewPatientReferralSource | "NOT_CAPTURED" | "ALL";
 }
 
 export interface RawAppointmentPreferredSelection {
