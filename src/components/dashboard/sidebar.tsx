@@ -4,6 +4,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import careOperationsHeartline from "@/assets/illustrations/care-operations-heartline.png";
 import dogCatSidebarIllustration from "@/assets/illustrations/dog-cat-sidebar-illustration.png";
 import liliLogo from "@/assets/illustrations/lili-veterinary-hospital-logo.svg";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -19,7 +20,16 @@ const brandGuideItems = [
   { to: "/brand-guide/photoshoot-guidelines", label: "Photoshoot Guidelines" }
 ];
 
-export function Sidebar() {
+interface SidebarContentProps {
+  onNavigate?: () => void;
+}
+
+interface MobileSidebarProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function SidebarContent({ onNavigate }: SidebarContentProps) {
   const location = useLocation();
   const isBrandGuideRoute = location.pathname.startsWith("/brand-guide");
   const [isBrandGuideExpanded, setIsBrandGuideExpanded] = useState(isBrandGuideRoute);
@@ -31,7 +41,7 @@ export function Sidebar() {
   }, [isBrandGuideRoute]);
 
   return (
-    <aside className="dashboard-sidebar hidden h-[calc(100vh-32px)] w-[280px] shrink-0 rounded-[28px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.92)] p-6 backdrop-blur-[18px] lg:sticky lg:top-4 lg:flex lg:flex-col">
+    <>
       <div className="mb-8 flex items-center">
         <img src={liliLogo} alt="Lili Veterinary Hospital" className="h-auto w-[205px] rounded-sm object-contain" />
       </div>
@@ -59,6 +69,7 @@ export function Sidebar() {
             key={item.to}
             to={item.to}
             end={item.end}
+            onClick={onNavigate}
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-[14px] px-4 py-3 text-sm font-[650] transition",
@@ -104,6 +115,7 @@ export function Sidebar() {
                   <NavLink
                     key={item.label}
                     to={item.to}
+                    onClick={onNavigate}
                     className={({ isActive }) =>
                       cn(
                         "flex items-center rounded-[12px] px-4 py-2.5 text-sm font-[650] transition",
@@ -148,6 +160,36 @@ export function Sidebar() {
           <p className="mt-1 font-medium">Actions taken here should reflect live clinic decisions.</p>
         </div>
       </div>
+    </>
+  );
+}
+
+export function Sidebar() {
+  return (
+    <aside className="dashboard-sidebar hidden h-[calc(100vh-32px)] w-[280px] shrink-0 rounded-[28px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.92)] p-6 backdrop-blur-[18px] lg:sticky lg:top-4 lg:flex lg:flex-col">
+      <SidebarContent />
     </aside>
+  );
+}
+
+export function MobileSidebar({ open, onOpenChange }: MobileSidebarProps) {
+  const location = useLocation();
+
+  useEffect(() => {
+    onOpenChange(false);
+  }, [location.pathname, onOpenChange]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        overlayClassName="bg-[#102E24]/35 backdrop-blur-sm lg:hidden"
+        className="inset-y-3 left-3 right-auto flex h-[calc(100vh-24px)] w-[min(320px,calc(100vw-24px))] flex-col overflow-y-auto rounded-[28px] border border-[rgba(221,235,226,0.9)] bg-[rgba(255,255,255,0.96)] p-6 backdrop-blur-[18px] lg:hidden"
+      >
+        <DialogTitle className="sr-only">Navigation menu</DialogTitle>
+        <DialogDescription className="sr-only">Browse dashboard sections and brand guide pages.</DialogDescription>
+        <SidebarContent onNavigate={() => onOpenChange(false)} />
+      </DialogContent>
+    </Dialog>
   );
 }

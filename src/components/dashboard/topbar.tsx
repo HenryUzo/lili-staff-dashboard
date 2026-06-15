@@ -1,4 +1,4 @@
-import { CalendarRange, ChevronDown, LogOut, Mail, ShieldCheck } from "lucide-react";
+import { CalendarRange, ChevronDown, LogOut, Mail, Menu, ShieldCheck } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "@/auth/auth-context";
 import { NotificationCenter } from "@/components/dashboard/notification-center";
@@ -12,7 +12,11 @@ const labels: Record<string, string> = {
   "/brand-guide": "Brand guide"
 };
 
-export function Topbar() {
+interface TopbarProps {
+  onOpenNavigation: () => void;
+}
+
+export function Topbar({ onOpenNavigation }: TopbarProps) {
   const location = useLocation();
   const { logout, user } = useAuth();
   const basePath = `/${location.pathname.split("/")[1]}`.replace("//", "/");
@@ -20,17 +24,28 @@ export function Topbar() {
 
   return (
     <header className="dashboard-topbar relative z-20 flex min-h-[84px] flex-col gap-4 overflow-visible rounded-[24px] border border-[rgba(221,235,226,0.88)] bg-[rgba(255,255,255,0.94)] px-6 py-[18px] backdrop-blur-[18px] sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-4">
-        <div>
-          <p className="text-sm font-[750] tracking-[-0.01em] text-[#102E24]">{label}</p>
-          <div className="mt-1 flex items-center gap-2 text-[13px] font-medium text-[#4F6F62]">
-            <CalendarRange className="h-4 w-4 text-[#087C48]" />
-            {new Intl.DateTimeFormat(undefined, {
-              weekday: "long",
-              month: "long",
-              day: "numeric",
-              year: "numeric"
-            }).format(new Date())}
+      <div className="flex w-full items-start justify-between gap-4 sm:w-auto sm:items-center sm:justify-start">
+        <div className="flex items-center gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onOpenNavigation}
+            className="h-12 w-12 shrink-0 rounded-2xl border-[#DDEBE2] px-0 text-[#102E24] lg:hidden"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="h-5 w-5 text-[#087C48]" />
+          </Button>
+          <div>
+            <p className="text-sm font-[750] tracking-[-0.01em] text-[#102E24]">{label}</p>
+            <div className="mt-1 flex items-center gap-2 text-[13px] font-medium text-[#4F6F62]">
+              <CalendarRange className="h-4 w-4 text-[#087C48]" />
+              {new Intl.DateTimeFormat(undefined, {
+                weekday: "long",
+                month: "long",
+                day: "numeric",
+                year: "numeric"
+              }).format(new Date())}
+            </div>
           </div>
         </div>
         <img
