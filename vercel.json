@@ -1,24 +1,11 @@
 {
-  "rewrites": [
+  "routes": [
     {
-      "source": "/login",
-      "destination": "/index.html"
+      "handle": "filesystem"
     },
     {
-      "source": "/appointments",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/appointments/(.*)",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/new-patients",
-      "destination": "/index.html"
-    },
-    {
-      "source": "/new-patients/(.*)",
-      "destination": "/index.html"
+      "src": "/[^.]+$",
+      "dest": "/index.html"
     }
   ]
 }
