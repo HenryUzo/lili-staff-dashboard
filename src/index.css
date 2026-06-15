@@ -39,3 +39,36 @@
     @apply border border-white/60 bg-white/80 backdrop-blur-xl;
   }
 }
+
+@media print {
+  body.photoshoot-guide-print-context {
+    background: white !important;
+  }
+
+  body.photoshoot-guide-print-context .dashboard-shell,
+  body.photoshoot-guide-print-context .dashboard-main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  body.photoshoot-guide-print-context .dashboard-sidebar,
+  body.photoshoot-guide-print-context .dashboard-topbar,
+  body.photoshoot-guide-print-context .photoshoot-no-print {
+    display: none !important;
+  }
+
+  body.photoshoot-guide-print-context .photoshoot-print-page,
+  body.photoshoot-guide-print-context .photoshoot-print-page section,
+  body.photoshoot-guide-print-context .photoshoot-print-page article,
+  body.photoshoot-guide-print-context .photoshoot-print-page div {
+    box-shadow: none !important;
+  }
+
+  body.photoshoot-guide-print-context .photoshoot-print-page {
+    padding: 0 !important;
+  }
+
+  body.photoshoot-guide-print-context .photoshoot-print-page section {
+    break-inside: avoid;
+  }
+}

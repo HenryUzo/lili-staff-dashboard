@@ -4,6 +4,7 @@ import { LoginPage } from "@/pages/login-page";
 import { NewPatientRequestsPage } from "@/pages/new-patient-requests-page";
 import { OverviewPage } from "@/pages/overview-page";
 import { AppointmentRequestsPage } from "@/pages/appointment-requests-page";
+import { PhotoshootGuidelinesPage } from "@/pages/photoshoot-guidelines-page";
 import { ProtectedRoute } from "@/routes/protected-route";
 
 export const appRouter = createBrowserRouter([
@@ -36,6 +37,10 @@ export const appRouter = createBrowserRouter([
           {
             path: "new-patients/:requestId",
             element: <NewPatientRequestsPage />
+          },
+          {
+            path: "brand-guide/photoshoot-guidelines",
+            element: <PhotoshootGuidelinesPage />
           }
         ]
       }

@@ -8,7 +8,8 @@ import headerCorgiIllustration from "@/assets/illustrations/header-corgi-illustr
 const labels: Record<string, string> = {
   "/": "Operations overview",
   "/appointments": "Appointment request queue",
-  "/new-patients": "New patient intake queue"
+  "/new-patients": "New patient intake queue",
+  "/brand-guide": "Brand guide"
 };
 
 export function Topbar() {
@@ -18,7 +19,7 @@ export function Topbar() {
   const label = labels[basePath] ?? "Staff dashboard";
 
   return (
-    <header className="relative z-20 flex min-h-[84px] flex-col gap-4 overflow-visible rounded-[24px] border border-[rgba(221,235,226,0.88)] bg-[rgba(255,255,255,0.94)] px-6 py-[18px] backdrop-blur-[18px] sm:flex-row sm:items-center sm:justify-between">
+    <header className="dashboard-topbar relative z-20 flex min-h-[84px] flex-col gap-4 overflow-visible rounded-[24px] border border-[rgba(221,235,226,0.88)] bg-[rgba(255,255,255,0.94)] px-6 py-[18px] backdrop-blur-[18px] sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-4">
         <div>
           <p className="text-sm font-[750] tracking-[-0.01em] text-[#102E24]">{label}</p>
