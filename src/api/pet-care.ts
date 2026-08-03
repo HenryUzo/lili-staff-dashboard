@@ -22,6 +22,10 @@ export async function getPetCareArticles(filters: PetCareFilters) {
   return response.data.items;
 }
 
+export async function getPetCareArticle(id: string) {
+  return (await api.get<PetCareArticle>(`/api/admin/pet-care/articles/${id}`)).data;
+}
+
 export async function getPetCareReviewers() {
   const response = await api.get<{ items: PetCareReviewer[] }>("/api/admin/pet-care/reviewers");
   return response.data.items;

@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Archive,
+  ArrowLeft,
   BookOpenText,
   Copy,
   Eye,
@@ -17,6 +19,7 @@ import { toast } from "sonner";
 import {
   createPetCareArticle,
   createPetCarePreviewShare,
+  getPetCareArticle,
   getPetCareArticles,
   getPetCareReviewers,
   runPetCareArticleAction,
@@ -273,8 +276,11 @@ function ArticlePreview({ article }: { article: PetCareArticleInput }) {
 
 export function PetCareArticlesPage() {
   const queryClient = useQueryClient();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { articleId } = useParams<{ articleId: string }>();
+  const isLibrary = !articleId && !location.pathname.endsWith("/new");
+  const isCreating = location.pathname.endsWith("/new");
   const [preview, setPreview] = useState(false);
   const [tab, setTab] = useState<EditorTab>("content");
   const [search, setSearch] = useState("");
@@ -285,24 +291,28 @@ export function PetCareArticlesPage() {
     queryKey: ["pet-care-articles", status, staleOnly, search],
     queryFn: () => getPetCareArticles({ status, stale: staleOnly, search }),
   });
+  const articleQuery = useQuery({
+    queryKey: ["pet-care-article", articleId],
+    queryFn: () => getPetCareArticle(articleId!),
+    enabled: Boolean(articleId),
+  });
   const reviewersQuery = useQuery({
     queryKey: ["pet-care-reviewers"],
     queryFn: getPetCareReviewers,
   });
-  const selected = useMemo(
-    () => articlesQuery.data?.find((item) => item.id === selectedId) ?? null,
-    [articlesQuery.data, selectedId],
-  );
+  const selected = articleQuery.data ?? null;
   useEffect(() => {
     if (selected) {
       setDraft(articleToInput(selected));
-      setIsCreating(false);
     }
   }, [selected]);
   useEffect(() => {
-    if (!selectedId && articlesQuery.data?.length && !isCreating)
-      setSelectedId(articlesQuery.data[0].id);
-  }, [articlesQuery.data, isCreating, selectedId]);
+    if (isCreating) {
+      setDraft(blankArticle);
+      setPreview(false);
+      setTab("content");
+    }
+  }, [isCreating]);
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ["pet-care-articles"] });
   const saveMutation = useMutation({
@@ -312,9 +322,8 @@ export function PetCareArticlesPage() {
         : createPetCareArticle(draft),
     onSuccess: async (article) => {
       toast.success(selected ? "Article saved" : "Draft created");
-      setSelectedId(article.id);
-      setIsCreating(false);
       await refresh();
+      navigate(`/pet-care/${article.id}`, { replace: isCreating });
     },
     onError: (error) =>
       toast.error(getErrorMessage(error, "Could not save article")),
@@ -361,35 +370,138 @@ export function PetCareArticlesPage() {
   ) => setDraft((current) => ({ ...current, [key]: value }));
   const currentStatus = selected?.status ?? "DRAFT";
 
+  if (isLibrary) {
+    return (
+      <div className="space-y-5">
+        <header className="flex flex-wrap items-end justify-between gap-4 rounded-[22px] border border-[#DDEBE2] bg-white px-7 py-6">
+          <div>
+            <p className="text-xs font-bold uppercase text-[#087C48]">
+              Publishing
+            </p>
+            <h1 className="mt-2 text-3xl font-extrabold text-[#102E24]">
+              Pet Care Library
+            </h1>
+            <p className="mt-2 text-sm text-[#60736B]">
+              Find, review, and manage every Pet Care article.
+            </p>
+          </div>
+          <Button onClick={() => navigate("/pet-care/new")}>
+            <Plus className="mr-2 h-4 w-4" />
+            New article
+          </Button>
+        </header>
+        <section className="rounded-[18px] border border-[#DDEBE2] bg-white p-5">
+          <div className="grid gap-3 md:grid-cols-[minmax(240px,1fr)_220px_180px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-[#789087]" />
+              <Input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search articles"
+                className="pl-9"
+              />
+            </div>
+            <Select
+              value={status}
+              onChange={(event) =>
+                setStatus(event.target.value as typeof status)
+              }
+            >
+              <option value="ALL">All statuses</option>
+              {Object.entries(statusLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+            <button
+              type="button"
+              onClick={() => setStaleOnly((value) => !value)}
+              className={cn(
+                "rounded-lg border px-3 text-xs font-bold",
+                staleOnly
+                  ? "border-[#B86A00] bg-[#FFF3D9] text-[#8A5900]"
+                  : "border-[#DDEBE2] text-[#506B60]",
+              )}
+            >
+              Review overdue
+            </button>
+          </div>
+          <div className="mt-5 overflow-hidden rounded-lg border border-[#E5EEE8]">
+            <div className="hidden grid-cols-[minmax(0,1fr)_180px_150px_190px] gap-4 bg-[#F7FAF8] px-5 py-3 text-xs font-bold uppercase text-[#60736B] md:grid">
+              <span>Article</span>
+              <span>Category</span>
+              <span>Status</span>
+              <span>Veterinary reviewer</span>
+            </div>
+            {articlesQuery.isLoading ? (
+              <p className="p-6 text-sm text-[#60736B]">Loading articles...</p>
+            ) : articlesQuery.data?.length ? (
+              articlesQuery.data.map((article) => (
+                <button
+                  key={article.id}
+                  type="button"
+                  onClick={() => navigate(`/pet-care/${article.id}`)}
+                  className="grid w-full gap-2 border-t border-[#E5EEE8] px-5 py-4 text-left first:border-t-0 hover:bg-[#F8FBF9] md:grid-cols-[minmax(0,1fr)_180px_150px_190px] md:items-center md:gap-4"
+                >
+                  <span>
+                    <strong className="block text-sm text-[#102E24]">
+                      {article.title}
+                    </strong>
+                    <span className="mt-1 block text-xs text-[#789087]">
+                      Updated {new Date(article.updatedAt).toLocaleDateString()}
+                    </span>
+                  </span>
+                  <span className="text-sm text-[#506B60]">
+                    {article.categoryLabel}
+                  </span>
+                  <span>
+                    <StatusPill status={article.status} />
+                  </span>
+                  <span className="text-sm text-[#506B60]">
+                    {article.reviewer?.name ?? "Not assigned"}
+                  </span>
+                </button>
+              ))
+            ) : (
+              <div className="p-10 text-center">
+                <BookOpenText className="mx-auto h-9 w-9 text-[#8CAC9D]" />
+                <p className="mt-3 font-bold">No articles match these filters.</p>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <header className="flex flex-wrap items-end justify-between gap-4 rounded-[22px] border border-[#DDEBE2] bg-white px-7 py-6">
         <div>
-          <p className="text-xs font-bold uppercase text-[#087C48]">
-            Publishing
-          </p>
+          <button
+            type="button"
+            onClick={() => navigate("/pet-care")}
+            className="flex items-center gap-2 text-sm font-bold text-[#087C48]"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to articles
+          </button>
           <h1 className="mt-2 text-3xl font-extrabold text-[#102E24]">
-            Pet Care Library
+            {isCreating ? "Create Pet Care article" : selected?.title ?? "Article editor"}
           </h1>
           <p className="mt-2 text-sm text-[#60736B]">
-            Write, collect feedback, receive veterinary approval, and publish.
+            Edit content, configure search metadata, collect feedback, and publish after veterinary approval.
           </p>
         </div>
         <Button
-          onClick={() => {
-            setDraft(blankArticle);
-            setSelectedId(null);
-            setIsCreating(true);
-            setPreview(false);
-            setTab("content");
-          }}
+          onClick={() => navigate("/pet-care/new")}
         >
           <Plus className="mr-2 h-4 w-4" />
           New article
         </Button>
       </header>
-      <div className="grid min-h-[720px] gap-5 xl:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className="rounded-[18px] border border-[#DDEBE2] bg-white p-4">
+      <div className="grid min-h-[720px] gap-5">
+        <aside className="hidden">
           <div className="relative">
             <Search className="absolute left-3 top-3 h-4 w-4 text-[#789087]" />
             <Input
@@ -433,13 +545,10 @@ export function PetCareArticlesPage() {
               articlesQuery.data?.map((article) => (
                 <button
                   key={article.id}
-                  onClick={() => {
-                    setSelectedId(article.id);
-                    setPreview(false);
-                  }}
+                  onClick={() => navigate(`/pet-care/${article.id}`)}
                   className={cn(
                     "w-full rounded-lg border p-3 text-left",
-                    selectedId === article.id
+                    articleId === article.id
                       ? "border-[#087C48] bg-[#F2FAF5]"
                       : "border-[#E5EEE8] hover:bg-[#F8FBF9]",
                   )}

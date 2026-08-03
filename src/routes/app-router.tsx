@@ -44,6 +44,14 @@ export const appRouter = createBrowserRouter([
             element: <PetCareArticlesPage />
           },
           {
+            path: "pet-care/new",
+            element: <PetCareArticlesPage />
+          },
+          {
+            path: "pet-care/:articleId",
+            element: <PetCareArticlesPage />
+          },
+          {
             path: "brand-guide/photoshoot-guidelines",
             element: <PhotoshootGuidelinesPage />
           }
