@@ -1,0 +1,40 @@
+import { api } from "@/api/http";
+import type { PetCareArticle, PetCareArticleInput, PetCarePublishingStatus, PetCareReviewer } from "@/types/api";
+
+export interface PetCareFilters {
+  status?: PetCarePublishingStatus | "ALL";
+  category?: string;
+  reviewerId?: string;
+  stale?: boolean;
+  search?: string;
+}
+
+export async function getPetCareArticles(filters: PetCareFilters) {
+  const response = await api.get<{ items: PetCareArticle[] }>("/api/admin/pet-care/articles", {
+    params: {
+      status: filters.status && filters.status !== "ALL" ? filters.status : undefined,
+      category: filters.category || undefined,
+      reviewerId: filters.reviewerId || undefined,
+      stale: filters.stale ? "true" : undefined,
+      search: filters.search || undefined
+    }
+  });
+  return response.data.items;
+}
+
+export async function getPetCareReviewers() {
+  const response = await api.get<{ items: PetCareReviewer[] }>("/api/admin/pet-care/reviewers");
+  return response.data.items;
+}
+
+export async function createPetCareArticle(input: PetCareArticleInput) {
+  return (await api.post<PetCareArticle>("/api/admin/pet-care/articles", input)).data;
+}
+
+export async function updatePetCareArticle(id: string, input: Partial<PetCareArticleInput>) {
+  return (await api.patch<PetCareArticle>(`/api/admin/pet-care/articles/${id}`, input)).data;
+}
+
+export async function runPetCareArticleAction(id: string, action: "submit-review" | "approve" | "publish" | "archive") {
+  return (await api.post<PetCareArticle>(`/api/admin/pet-care/articles/${id}/${action}`)).data;
+}

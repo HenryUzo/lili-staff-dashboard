@@ -10,7 +10,8 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/appointments", label: "Appointment Requests", icon: ClipboardList },
-  { to: "/new-patients", label: "New Patient Requests", icon: PawPrint }
+  { to: "/new-patients", label: "New Patient Requests", icon: PawPrint },
+  { to: "/pet-care", label: "Pet Care Library", icon: BookOpenText }
 ];
 
 const brandGuideItems = [

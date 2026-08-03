@@ -1,4 +1,70 @@
 export type StaffRole = "ADMIN" | "STAFF";
+export type PetCarePublishingStatus = "DRAFT" | "IN_REVIEW" | "APPROVED" | "PUBLISHED" | "ARCHIVED";
+export type PetCareReviewStatus = "NOT_REVIEWED" | "IN_REVIEW" | "MEDICALLY_REVIEWED";
+
+export interface PetCareReviewer {
+  id: string;
+  slug: string;
+  name: string;
+  credentials: string;
+  role: string;
+  photoUrl: string | null;
+  shortBio: string;
+  isActive: boolean;
+}
+
+export interface PetCareArticleSection {
+  id: string;
+  title: string;
+  content: string[];
+  bullets?: string[];
+}
+
+export interface PetCareArticle {
+  id: string;
+  slug: string;
+  title: string;
+  seoTitle: string;
+  seoDescription: string;
+  excerpt: string;
+  summary: string;
+  categorySlug: string;
+  categoryLabel: string;
+  tags: string[];
+  heroImageUrl: string | null;
+  heroImageKey: string | null;
+  heroImageFile: string | null;
+  heroImageAlt: string;
+  authorName: string;
+  authorRole: string;
+  reviewerId: string | null;
+  reviewer: PetCareReviewer | null;
+  status: PetCarePublishingStatus;
+  reviewStatus: PetCareReviewStatus;
+  reviewedAt: string | null;
+  reviewDueAt: string | null;
+  publishedAt: string | null;
+  readingTimeMinutes: number;
+  relatedService: { title: string; path: string };
+  relatedArticleSlugs: string[];
+  featured: boolean;
+  seasonal: boolean;
+  popular: boolean;
+  keyTakeaways: string[];
+  monitorAtHome: string[];
+  warningCallout: string | null;
+  vetQuote: string | null;
+  faqs: Array<{ question: string; answer: string }>;
+  references: Array<{ label: string; url?: string }>;
+  sections: PetCareArticleSection[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type PetCareArticleInput = Omit<
+  PetCareArticle,
+  "id" | "reviewer" | "status" | "reviewStatus" | "reviewedAt" | "publishedAt" | "createdAt" | "updatedAt"
+>;
 export type AppointmentRequestStatus =
   | "PENDING_REVIEW"
   | "CONFIRMED"
