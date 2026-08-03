@@ -57,13 +57,30 @@ export interface PetCareArticle {
   faqs: Array<{ question: string; answer: string }>;
   references: Array<{ label: string; url?: string }>;
   sections: PetCareArticleSection[];
+  previewShares: PetCarePreviewShare[];
   createdAt: string;
   updatedAt: string;
 }
 
+export interface PetCarePreviewComment {
+  id: string;
+  authorName: string;
+  comment: string;
+  createdAt: string;
+}
+
+export interface PetCarePreviewShare {
+  id: string;
+  shareType: "COMMENT" | "REVIEWER";
+  expiresAt: string;
+  revokedAt: string | null;
+  createdAt: string;
+  comments: PetCarePreviewComment[];
+}
+
 export type PetCareArticleInput = Omit<
   PetCareArticle,
-  "id" | "reviewer" | "status" | "reviewStatus" | "reviewedAt" | "publishedAt" | "createdAt" | "updatedAt"
+  "id" | "reviewer" | "previewShares" | "status" | "reviewStatus" | "reviewedAt" | "publishedAt" | "createdAt" | "updatedAt"
 >;
 export type AppointmentRequestStatus =
   | "PENDING_REVIEW"

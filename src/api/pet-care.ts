@@ -35,6 +35,13 @@ export async function updatePetCareArticle(id: string, input: Partial<PetCareArt
   return (await api.patch<PetCareArticle>(`/api/admin/pet-care/articles/${id}`, input)).data;
 }
 
-export async function runPetCareArticleAction(id: string, action: "submit-review" | "approve" | "publish" | "archive") {
+export async function runPetCareArticleAction(id: string, action: "submit-review" | "publish" | "archive") {
   return (await api.post<PetCareArticle>(`/api/admin/pet-care/articles/${id}/${action}`)).data;
+}
+
+export async function createPetCarePreviewShare(id: string, shareType: "COMMENT" | "REVIEWER") {
+  return (await api.post<{ token: string; shareType: "COMMENT" | "REVIEWER"; expiresAt: string }>(
+    `/api/admin/pet-care/articles/${id}/preview-shares`,
+    { shareType, expiresInDays: 7 }
+  )).data;
 }
