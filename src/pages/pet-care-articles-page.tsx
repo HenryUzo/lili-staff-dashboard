@@ -1042,16 +1042,10 @@ export function PetCareArticlesPage() {
                                   "sections",
                                   draft.sections.map((item, itemIndex) =>
                                     itemIndex === index
-                                      ? {
-                                          ...item,
-                                          title: e.target.value,
-                                          id:
-                                            e.target.value
-                                              .toLowerCase()
-                                              .replace(/[^a-z0-9]+/g, "-")
-                                              .replace(/(^-|-$)/g, "") ||
-                                            `section-${index + 1}`,
-                                        }
+                                    ? {
+                                        ...item,
+                                        title: e.target.value,
+                                      }
                                       : item,
                                   ),
                                 )
