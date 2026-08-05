@@ -26,6 +26,19 @@ export async function getPetCareArticle(id: string) {
   return (await api.get<PetCareArticle>(`/api/admin/pet-care/articles/${id}`)).data;
 }
 
+export async function uploadPetCareHeroImage(file: File) {
+  const formData = new FormData();
+  formData.append("image", file);
+
+  return (await api.post<{
+    url: string;
+    storageKey: string;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number;
+  }>("/api/admin/pet-care/images", formData)).data;
+}
+
 export async function getPetCareReviewers() {
   const response = await api.get<{ items: PetCareReviewer[] }>("/api/admin/pet-care/reviewers");
   return response.data.items;

@@ -8,12 +8,15 @@ import {
   Copy,
   Eye,
   FileEdit,
+  ImageUp,
+  Loader2,
   MessageSquare,
   Plus,
   Search,
   Send,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -23,6 +26,7 @@ import {
   getPetCareArticles,
   getPetCareReviewers,
   runPetCareArticleAction,
+  uploadPetCareHeroImage,
   updatePetCareArticle,
 } from "@/api/pet-care";
 import { getErrorMessage } from "@/api/http";
@@ -364,6 +368,20 @@ export function PetCareArticlesPage() {
     onError: (error) =>
       toast.error(getErrorMessage(error, "Could not create preview link")),
   });
+  const imageUploadMutation = useMutation({
+    mutationFn: uploadPetCareHeroImage,
+    onSuccess: (image) => {
+      setDraft((current) => ({
+        ...current,
+        heroImageUrl: image.url,
+        heroImageKey: null,
+        heroImageFile: image.fileName,
+      }));
+      toast.success("Hero image uploaded");
+    },
+    onError: (error) =>
+      toast.error(getErrorMessage(error, "Could not upload hero image")),
+  });
   const set = <K extends keyof PetCareArticleInput>(
     key: K,
     value: PetCareArticleInput[K],
@@ -698,14 +716,83 @@ export function PetCareArticlesPage() {
                         className="min-h-28 w-full rounded-lg border border-[#DDEBE2] p-3"
                       />
                     </Field>
-                    <Field label="Hero image URL" wide>
-                      <Input
-                        value={draft.heroImageUrl ?? ""}
-                        onChange={(e) =>
-                          set("heroImageUrl", e.target.value || null)
-                        }
-                      />
-                    </Field>
+                    <div className="md:col-span-2">
+                      <span className="mb-2 block text-xs font-bold uppercase text-[#60736B]">
+                        Hero image
+                      </span>
+                      {draft.heroImageUrl ? (
+                        <div className="overflow-hidden rounded-lg border border-[#DDEBE2] bg-[#F7FAF8]">
+                          <img
+                            src={draft.heroImageUrl}
+                            alt={draft.heroImageAlt || "Hero image preview"}
+                            className="aspect-[16/7] w-full object-cover"
+                          />
+                          <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+                            <span className="truncate text-sm font-semibold text-[#415D52]">
+                              {draft.heroImageFile ?? "Uploaded hero image"}
+                            </span>
+                            <div className="flex gap-2">
+                              <label className="inline-flex cursor-pointer items-center rounded-lg border border-[#CFE0D5] bg-white px-3 py-2 text-sm font-bold text-[#174C38] hover:bg-[#F2FAF5]">
+                                <ImageUp className="mr-2 h-4 w-4" />
+                                Replace
+                                <input
+                                  type="file"
+                                  accept="image/jpeg,image/png"
+                                  className="sr-only"
+                                  disabled={imageUploadMutation.isPending}
+                                  onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    if (file) imageUploadMutation.mutate(file);
+                                    event.target.value = "";
+                                  }}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  set("heroImageUrl", null);
+                                  set("heroImageFile", null);
+                                }}
+                                className="inline-flex items-center rounded-lg border border-[#E6D7D7] px-3 py-2 text-sm font-bold text-[#8A3030]"
+                              >
+                                <X className="mr-2 h-4 w-4" /> Remove
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-[#AFC9BA] bg-[#F7FAF8] px-5 text-center hover:border-[#087C48] hover:bg-[#F2FAF5]">
+                          {imageUploadMutation.isPending ? (
+                            <Loader2 className="h-7 w-7 animate-spin text-[#087C48]" />
+                          ) : (
+                            <ImageUp className="h-7 w-7 text-[#087C48]" />
+                          )}
+                          <strong className="mt-3 text-sm text-[#174C38]">
+                            {imageUploadMutation.isPending
+                              ? "Uploading image..."
+                              : "Choose hero image"}
+                          </strong>
+                          <span className="mt-1 text-xs text-[#60736B]">
+                            JPG or PNG
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png"
+                            className="sr-only"
+                            disabled={imageUploadMutation.isPending}
+                            onChange={(event) => {
+                              const file = event.target.files?.[0];
+                              if (file) imageUploadMutation.mutate(file);
+                              event.target.value = "";
+                            }}
+                          />
+                        </label>
+                      )}
+                      <span className="mt-1.5 block text-xs text-[#789087]">
+                        Upload a JPG or PNG image. Use a clear landscape image
+                        with the subject near the center.
+                      </span>
+                    </div>
                     <Field label="Image description" wide>
                       <Input
                         value={draft.heroImageAlt}
