@@ -36,7 +36,9 @@ export async function uploadPetCareHeroImage(file: File) {
     fileName: string;
     mimeType: string;
     sizeBytes: number;
-  }>("/api/admin/pet-care/images", formData)).data;
+  }>("/api/admin/pet-care/images", formData, {
+    headers: { "Content-Type": "multipart/form-data" }
+  })).data;
 }
 
 export async function getPetCareReviewers() {

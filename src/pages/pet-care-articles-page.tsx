@@ -44,6 +44,7 @@ type EditorTab = "content" | "seo" | "review" | "advanced";
 const PUBLIC_SITE_URL =
   import.meta.env.VITE_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
   "https://www.liliveterinaryhospital.com";
+const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif,image/avif,image/bmp";
 const statusLabels: Record<PetCarePublishingStatus, string> = {
   DRAFT: "Draft",
   IN_REVIEW: "In review",
@@ -241,6 +242,83 @@ function JsonField({
   );
 }
 
+function ImageUploadControl({
+  url,
+  fileName,
+  alt,
+  pending,
+  onSelect,
+  onRemove,
+}: {
+  url?: string | null;
+  fileName?: string | null;
+  alt?: string | null;
+  pending: boolean;
+  onSelect: (file: File) => void;
+  onRemove: () => void;
+}) {
+  const fileInput = (
+    <input
+      type="file"
+      accept={IMAGE_ACCEPT}
+      className="sr-only"
+      disabled={pending}
+      onChange={(event) => {
+        const file = event.target.files?.[0];
+        if (file) onSelect(file);
+        event.target.value = "";
+      }}
+    />
+  );
+
+  if (!url) {
+    return (
+      <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-[#AFC9BA] bg-[#F7FAF8] px-5 text-center hover:border-[#087C48] hover:bg-[#F2FAF5]">
+        {pending ? (
+          <Loader2 className="h-7 w-7 animate-spin text-[#087C48]" />
+        ) : (
+          <ImageUp className="h-7 w-7 text-[#087C48]" />
+        )}
+        <strong className="mt-3 text-sm text-[#174C38]">
+          {pending ? "Uploading image..." : "Choose image"}
+        </strong>
+        <span className="mt-1 text-xs text-[#60736B]">
+          JPEG, PNG, WebP, GIF, AVIF, or BMP
+        </span>
+        {fileInput}
+      </label>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-[#DDEBE2] bg-[#F7FAF8]">
+      <img
+        src={url}
+        alt={alt || "Uploaded image preview"}
+        className="aspect-[16/7] w-full object-cover"
+      />
+      <div className="flex flex-wrap items-center justify-between gap-3 p-3">
+        <span className="truncate text-sm font-semibold text-[#415D52]">
+          {fileName ?? "Uploaded image"}
+        </span>
+        <div className="flex gap-2">
+          <label className="inline-flex cursor-pointer items-center rounded-lg border border-[#CFE0D5] bg-white px-3 py-2 text-sm font-bold text-[#174C38] hover:bg-[#F2FAF5]">
+            <ImageUp className="mr-2 h-4 w-4" /> Replace
+            {fileInput}
+          </label>
+          <button
+            type="button"
+            onClick={onRemove}
+            className="inline-flex items-center rounded-lg border border-[#E6D7D7] px-3 py-2 text-sm font-bold text-[#8A3030]"
+          >
+            <X className="mr-2 h-4 w-4" /> Remove
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ArticlePreview({ article }: { article: PetCareArticleInput }) {
   return (
     <article className="mx-auto max-w-3xl py-5">
@@ -267,11 +345,26 @@ function ArticlePreview({ article }: { article: PetCareArticleInput }) {
       {article.sections.map((section) => (
         <section key={section.id} className="mt-9">
           <h3 className="text-2xl font-extrabold">{section.title}</h3>
-          {section.content.map((paragraph, index) => (
-            <p key={index} className="mt-3 leading-8 text-[#415D52]">
-              {paragraph}
-            </p>
-          ))}
+          {section.type === "IMAGE" && section.imageUrl ? (
+            <figure className="mt-4">
+              <img
+                src={section.imageUrl}
+                alt={section.imageAlt ?? ""}
+                className="max-h-[620px] w-full rounded-lg object-cover"
+              />
+              {section.caption ? (
+                <figcaption className="mt-2 text-sm text-[#60736B]">
+                  {section.caption}
+                </figcaption>
+              ) : null}
+            </figure>
+          ) : (
+            section.content.map((paragraph, index) => (
+              <p key={index} className="mt-3 leading-8 text-[#415D52]">
+                {paragraph}
+              </p>
+            ))
+          )}
         </section>
       ))}
     </article>
@@ -381,6 +474,26 @@ export function PetCareArticlesPage() {
     },
     onError: (error) =>
       toast.error(getErrorMessage(error, "Could not upload hero image")),
+  });
+  const sectionImageUploadMutation = useMutation({
+    mutationFn: ({ file }: { sectionId: string; file: File }) =>
+      uploadPetCareHeroImage(file),
+    onSuccess: (image, { sectionId }) => {
+      setDraft((current) => ({
+        ...current,
+        sections: current.sections.map((section) =>
+          section.id === sectionId
+            ? {
+                ...section,
+                imageUrl: image.url,
+              }
+            : section,
+        ),
+      }));
+      toast.success("Section image uploaded");
+    },
+    onError: (error) =>
+      toast.error(getErrorMessage(error, "Could not upload section image")),
   });
   const set = <K extends keyof PetCareArticleInput>(
     key: K,
@@ -720,77 +833,20 @@ export function PetCareArticlesPage() {
                       <span className="mb-2 block text-xs font-bold uppercase text-[#60736B]">
                         Hero image
                       </span>
-                      {draft.heroImageUrl ? (
-                        <div className="overflow-hidden rounded-lg border border-[#DDEBE2] bg-[#F7FAF8]">
-                          <img
-                            src={draft.heroImageUrl}
-                            alt={draft.heroImageAlt || "Hero image preview"}
-                            className="aspect-[16/7] w-full object-cover"
-                          />
-                          <div className="flex flex-wrap items-center justify-between gap-3 p-3">
-                            <span className="truncate text-sm font-semibold text-[#415D52]">
-                              {draft.heroImageFile ?? "Uploaded hero image"}
-                            </span>
-                            <div className="flex gap-2">
-                              <label className="inline-flex cursor-pointer items-center rounded-lg border border-[#CFE0D5] bg-white px-3 py-2 text-sm font-bold text-[#174C38] hover:bg-[#F2FAF5]">
-                                <ImageUp className="mr-2 h-4 w-4" />
-                                Replace
-                                <input
-                                  type="file"
-                                  accept="image/jpeg,image/png"
-                                  className="sr-only"
-                                  disabled={imageUploadMutation.isPending}
-                                  onChange={(event) => {
-                                    const file = event.target.files?.[0];
-                                    if (file) imageUploadMutation.mutate(file);
-                                    event.target.value = "";
-                                  }}
-                                />
-                              </label>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  set("heroImageUrl", null);
-                                  set("heroImageFile", null);
-                                }}
-                                className="inline-flex items-center rounded-lg border border-[#E6D7D7] px-3 py-2 text-sm font-bold text-[#8A3030]"
-                              >
-                                <X className="mr-2 h-4 w-4" /> Remove
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <label className="flex min-h-40 cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-[#AFC9BA] bg-[#F7FAF8] px-5 text-center hover:border-[#087C48] hover:bg-[#F2FAF5]">
-                          {imageUploadMutation.isPending ? (
-                            <Loader2 className="h-7 w-7 animate-spin text-[#087C48]" />
-                          ) : (
-                            <ImageUp className="h-7 w-7 text-[#087C48]" />
-                          )}
-                          <strong className="mt-3 text-sm text-[#174C38]">
-                            {imageUploadMutation.isPending
-                              ? "Uploading image..."
-                              : "Choose hero image"}
-                          </strong>
-                          <span className="mt-1 text-xs text-[#60736B]">
-                            JPG or PNG
-                          </span>
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png"
-                            className="sr-only"
-                            disabled={imageUploadMutation.isPending}
-                            onChange={(event) => {
-                              const file = event.target.files?.[0];
-                              if (file) imageUploadMutation.mutate(file);
-                              event.target.value = "";
-                            }}
-                          />
-                        </label>
-                      )}
+                      <ImageUploadControl
+                        url={draft.heroImageUrl}
+                        fileName={draft.heroImageFile}
+                        alt={draft.heroImageAlt}
+                        pending={imageUploadMutation.isPending}
+                        onSelect={(file) => imageUploadMutation.mutate(file)}
+                        onRemove={() => {
+                          set("heroImageUrl", null);
+                          set("heroImageFile", null);
+                        }}
+                      />
                       <span className="mt-1.5 block text-xs text-[#789087]">
-                        Upload a JPG or PNG image. Use a clear landscape image
-                        with the subject near the center.
+                        Use a clear landscape image with the subject near the
+                        center.
                       </span>
                     </div>
                     <Field label="Image description" wide>
@@ -803,7 +859,105 @@ export function PetCareArticlesPage() {
                       <p className="text-xs font-bold uppercase text-[#60736B]">
                         Article sections
                       </p>
-                      {draft.sections.map((section, index) => (
+                      {draft.sections.map((section, index) =>
+                        section.type === "IMAGE" ? (
+                          <div
+                            key={`${section.id}-${index}`}
+                            className="rounded-lg border border-[#DDEBE2] p-4"
+                          >
+                            <div className="flex gap-2">
+                              <Input
+                                value={section.title}
+                                placeholder="Image section heading"
+                                onChange={(event) =>
+                                  set(
+                                    "sections",
+                                    draft.sections.map((item, itemIndex) =>
+                                      itemIndex === index
+                                        ? { ...item, title: event.target.value }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              />
+                              <button
+                                type="button"
+                                aria-label="Remove image section"
+                                onClick={() =>
+                                  set(
+                                    "sections",
+                                    draft.sections.filter(
+                                      (_, itemIndex) => itemIndex !== index,
+                                    ),
+                                  )
+                                }
+                                className="rounded-lg border px-3"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                            <div className="mt-3">
+                              <ImageUploadControl
+                                url={section.imageUrl}
+                                alt={section.imageAlt}
+                                pending={
+                                  sectionImageUploadMutation.isPending &&
+                                  sectionImageUploadMutation.variables
+                                    ?.sectionId === section.id
+                                }
+                                onSelect={(file) =>
+                                  sectionImageUploadMutation.mutate({
+                                    sectionId: section.id,
+                                    file,
+                                  })
+                                }
+                                onRemove={() =>
+                                  set(
+                                    "sections",
+                                    draft.sections.map((item, itemIndex) =>
+                                      itemIndex === index
+                                        ? { ...item, imageUrl: null }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              />
+                            </div>
+                            <div className="mt-3 grid gap-3 md:grid-cols-2">
+                              <Input
+                                value={section.imageAlt ?? ""}
+                                placeholder="Describe the image for accessibility"
+                                onChange={(event) =>
+                                  set(
+                                    "sections",
+                                    draft.sections.map((item, itemIndex) =>
+                                      itemIndex === index
+                                        ? { ...item, imageAlt: event.target.value }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              />
+                              <Input
+                                value={section.caption ?? ""}
+                                placeholder="Caption (optional)"
+                                onChange={(event) =>
+                                  set(
+                                    "sections",
+                                    draft.sections.map((item, itemIndex) =>
+                                      itemIndex === index
+                                        ? {
+                                            ...item,
+                                            caption: event.target.value || null,
+                                          }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                              />
+                            </div>
+                          </div>
+                        ) : (
                         <div
                           key={`${section.id}-${index}`}
                           className="rounded-lg border border-[#DDEBE2] p-4"
@@ -870,23 +1024,47 @@ export function PetCareArticlesPage() {
                           />
                         </div>
                       ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() =>
-                          set("sections", [
-                            ...draft.sections,
-                            {
-                              id: `section-${draft.sections.length + 1}`,
-                              title: "",
-                              content: [""],
-                            },
-                          ])
-                        }
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Add section
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            set("sections", [
+                              ...draft.sections,
+                              {
+                                id: `section-${draft.sections.length + 1}`,
+                                title: "",
+                                type: "CONTENT",
+                                content: [""],
+                              },
+                            ])
+                          }
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add section
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() =>
+                            set("sections", [
+                              ...draft.sections,
+                              {
+                                id: `image-${Date.now()}`,
+                                title: "Image",
+                                type: "IMAGE",
+                                content: [],
+                                imageUrl: null,
+                                imageAlt: "",
+                                caption: null,
+                              },
+                            ])
+                          }
+                        >
+                          <ImageUp className="mr-2 h-4 w-4" />
+                          Add new image
+                        </Button>
+                      </div>
                     </div>
                     <StringListEditor
                       label="Key takeaways"
