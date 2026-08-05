@@ -384,6 +384,7 @@ export function PetCareArticlesPage() {
   const [status, setStatus] = useState<PetCarePublishingStatus | "ALL">("ALL");
   const [staleOnly, setStaleOnly] = useState(false);
   const [draft, setDraft] = useState<PetCareArticleInput>(blankArticle);
+  const [invalidImageSectionId, setInvalidImageSectionId] = useState<string | null>(null);
   const articlesQuery = useQuery({
     queryKey: ["pet-care-articles", status, staleOnly, search],
     queryFn: () => getPetCareArticles({ status, stale: staleOnly, search }),
@@ -412,6 +413,33 @@ export function PetCareArticlesPage() {
   }, [isCreating]);
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ["pet-care-articles"] });
+  const saveDraft = () => {
+    const invalidImageSection = draft.sections.find(
+      (section) =>
+        section.type === "IMAGE" &&
+        (!section.imageUrl || (section.imageAlt?.trim().length ?? 0) < 5),
+    );
+
+    if (invalidImageSection) {
+      setInvalidImageSectionId(invalidImageSection.id);
+      setPreview(false);
+      setTab("content");
+      toast.error(
+        invalidImageSection.imageUrl
+          ? "Add an image description of at least 5 characters before saving."
+          : "Upload an image for the image section before saving.",
+      );
+      window.setTimeout(() => {
+        document
+          .getElementById(`article-section-${invalidImageSection.id}`)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
+      return;
+    }
+
+    setInvalidImageSectionId(null);
+    saveMutation.mutate();
+  };
   const saveMutation = useMutation({
     mutationFn: () =>
       selected
@@ -731,7 +759,7 @@ export function PetCareArticlesPage() {
                       {preview ? "Edit" : "Preview"}
                     </Button>
                     <Button
-                      onClick={() => saveMutation.mutate()}
+                      onClick={saveDraft}
                       disabled={
                         saveMutation.isPending || currentStatus === "ARCHIVED"
                       }
@@ -863,7 +891,13 @@ export function PetCareArticlesPage() {
                         section.type === "IMAGE" ? (
                           <div
                             key={`${section.id}-${index}`}
-                            className="rounded-lg border border-[#DDEBE2] p-4"
+                            id={`article-section-${section.id}`}
+                            className={cn(
+                              "rounded-lg border p-4",
+                              invalidImageSectionId === section.id
+                                ? "border-red-500 bg-red-50/40"
+                                : "border-[#DDEBE2]",
+                            )}
                           >
                             <div className="flex gap-2">
                               <Input
@@ -926,16 +960,23 @@ export function PetCareArticlesPage() {
                             <div className="mt-3 grid gap-3 md:grid-cols-2">
                               <Input
                                 value={section.imageAlt ?? ""}
-                                placeholder="Describe the image for accessibility"
+                                aria-invalid={invalidImageSectionId === section.id}
+                                placeholder="Image description (required)"
                                 onChange={(event) =>
-                                  set(
-                                    "sections",
-                                    draft.sections.map((item, itemIndex) =>
-                                      itemIndex === index
-                                        ? { ...item, imageAlt: event.target.value }
-                                        : item,
-                                    ),
-                                  )
+                                  {
+                                    const imageAlt = event.target.value;
+                                    set(
+                                      "sections",
+                                      draft.sections.map((item, itemIndex) =>
+                                        itemIndex === index
+                                          ? { ...item, imageAlt }
+                                          : item,
+                                      ),
+                                    );
+                                    if (imageAlt.trim().length >= 5) {
+                                      setInvalidImageSectionId(null);
+                                    }
+                                  }
                                 }
                               />
                               <Input
@@ -956,6 +997,13 @@ export function PetCareArticlesPage() {
                                 }
                               />
                             </div>
+                            {invalidImageSectionId === section.id ? (
+                              <p className="mt-2 text-sm font-semibold text-red-700">
+                                {section.imageUrl
+                                  ? "Describe what is shown in this image (at least 5 characters)."
+                                  : "Upload an image before saving this section."}
+                              </p>
+                            ) : null}
                           </div>
                         ) : (
                         <div
