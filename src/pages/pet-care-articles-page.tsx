@@ -139,16 +139,19 @@ function Field({
   help,
   children,
   wide = false,
+  required = false,
 }: {
   label: string;
   help?: string;
   children: React.ReactNode;
   wide?: boolean;
+  required?: boolean;
 }) {
   return (
     <label className={cn("block", wide && "md:col-span-2")}>
       <span className="mb-2 block text-xs font-bold uppercase text-[#60736B]">
         {label}
+        {required ? <span className="ml-1 text-red-600" aria-hidden="true">*</span> : null}
       </span>
       {children}
       {help ? (
@@ -802,13 +805,13 @@ export function PetCareArticlesPage() {
                   <ArticlePreview article={draft} />
                 ) : tab === "content" ? (
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field label="Article title" wide>
+                    <Field label="Article title" wide required>
                       <Input
                         value={draft.title}
                         onChange={(e) => set("title", e.target.value)}
                       />
                     </Field>
-                    <Field label="Category">
+                    <Field label="Category" required>
                       <Select
                         value={draft.categorySlug}
                         onChange={(e) => {
@@ -829,7 +832,7 @@ export function PetCareArticlesPage() {
                         ))}
                       </Select>
                     </Field>
-                    <Field label="Reading time">
+                    <Field label="Reading time" required>
                       <Input
                         type="number"
                         min={1}
@@ -842,6 +845,7 @@ export function PetCareArticlesPage() {
                     <Field
                       label="Short introduction"
                       wide
+                      required
                       help="Shown on cards and beneath the headline."
                     >
                       <textarea
@@ -850,7 +854,7 @@ export function PetCareArticlesPage() {
                         className="min-h-24 w-full rounded-lg border border-[#DDEBE2] p-3"
                       />
                     </Field>
-                    <Field label="Article summary" wide>
+                    <Field label="Article summary" wide required>
                       <textarea
                         value={draft.summary}
                         onChange={(e) => set("summary", e.target.value)}
@@ -859,7 +863,7 @@ export function PetCareArticlesPage() {
                     </Field>
                     <div className="md:col-span-2">
                       <span className="mb-2 block text-xs font-bold uppercase text-[#60736B]">
-                        Hero image
+                        Hero image <span className="text-red-600" aria-hidden="true">*</span>
                       </span>
                       <ImageUploadControl
                         url={draft.heroImageUrl}
@@ -877,7 +881,7 @@ export function PetCareArticlesPage() {
                         center.
                       </span>
                     </div>
-                    <Field label="Image description" wide>
+                    <Field label="Image description" wide required>
                       <Input
                         value={draft.heroImageAlt}
                         onChange={(e) => set("heroImageAlt", e.target.value)}
@@ -885,7 +889,7 @@ export function PetCareArticlesPage() {
                     </Field>
                     <div className="space-y-4 md:col-span-2">
                       <p className="text-xs font-bold uppercase text-[#60736B]">
-                        Article sections
+                        Article sections <span className="text-red-600" aria-hidden="true">*</span>
                       </p>
                       {draft.sections.map((section, index) =>
                         section.type === "IMAGE" ? (
@@ -899,6 +903,9 @@ export function PetCareArticlesPage() {
                                 : "border-[#DDEBE2]",
                             )}
                           >
+                            <p className="mb-2 text-xs font-bold uppercase text-[#60736B]">
+                              Image section heading <span className="text-red-600" aria-hidden="true">*</span>
+                            </p>
                             <div className="flex gap-2">
                               <Input
                                 value={section.title}
@@ -930,6 +937,9 @@ export function PetCareArticlesPage() {
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
+                            <p className="mb-2 mt-3 text-xs font-bold uppercase text-[#60736B]">
+                              Section image <span className="text-red-600" aria-hidden="true">*</span>
+                            </p>
                             <div className="mt-3">
                               <ImageUploadControl
                                 url={section.imageUrl}
@@ -958,44 +968,54 @@ export function PetCareArticlesPage() {
                               />
                             </div>
                             <div className="mt-3 grid gap-3 md:grid-cols-2">
-                              <Input
-                                value={section.imageAlt ?? ""}
-                                aria-invalid={invalidImageSectionId === section.id}
-                                placeholder="Image description (required)"
-                                onChange={(event) =>
-                                  {
-                                    const imageAlt = event.target.value;
+                              <label>
+                                <span className="mb-2 block text-xs font-bold uppercase text-[#60736B]">
+                                  Image description <span className="text-red-600" aria-hidden="true">*</span>
+                                </span>
+                                <Input
+                                  value={section.imageAlt ?? ""}
+                                  aria-invalid={invalidImageSectionId === section.id}
+                                  placeholder="Describe the image"
+                                  onChange={(event) =>
+                                    {
+                                      const imageAlt = event.target.value;
+                                      set(
+                                        "sections",
+                                        draft.sections.map((item, itemIndex) =>
+                                          itemIndex === index
+                                            ? { ...item, imageAlt }
+                                            : item,
+                                        ),
+                                      );
+                                      if (imageAlt.trim().length >= 5) {
+                                        setInvalidImageSectionId(null);
+                                      }
+                                    }
+                                  }
+                                />
+                              </label>
+                              <label>
+                                <span className="mb-2 block text-xs font-bold uppercase text-[#60736B]">
+                                  Caption <span className="normal-case font-normal">(optional)</span>
+                                </span>
+                                <Input
+                                  value={section.caption ?? ""}
+                                  placeholder="Image caption"
+                                  onChange={(event) =>
                                     set(
                                       "sections",
                                       draft.sections.map((item, itemIndex) =>
                                         itemIndex === index
-                                          ? { ...item, imageAlt }
+                                          ? {
+                                              ...item,
+                                              caption: event.target.value || null,
+                                            }
                                           : item,
                                       ),
-                                    );
-                                    if (imageAlt.trim().length >= 5) {
-                                      setInvalidImageSectionId(null);
-                                    }
+                                    )
                                   }
-                                }
-                              />
-                              <Input
-                                value={section.caption ?? ""}
-                                placeholder="Caption (optional)"
-                                onChange={(event) =>
-                                  set(
-                                    "sections",
-                                    draft.sections.map((item, itemIndex) =>
-                                      itemIndex === index
-                                        ? {
-                                            ...item,
-                                            caption: event.target.value || null,
-                                          }
-                                        : item,
-                                    ),
-                                  )
-                                }
-                              />
+                                />
+                              </label>
                             </div>
                             {invalidImageSectionId === section.id ? (
                               <p className="mt-2 text-sm font-semibold text-red-700">
@@ -1010,6 +1030,9 @@ export function PetCareArticlesPage() {
                           key={`${section.id}-${index}`}
                           className="rounded-lg border border-[#DDEBE2] p-4"
                         >
+                          <p className="mb-2 text-xs font-bold uppercase text-[#60736B]">
+                            Section heading <span className="text-red-600" aria-hidden="true">*</span>
+                          </p>
                           <div className="flex gap-2">
                             <Input
                               value={section.title}
@@ -1050,6 +1073,9 @@ export function PetCareArticlesPage() {
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
+                          <p className="mb-2 mt-3 text-xs font-bold uppercase text-[#60736B]">
+                            Section content <span className="text-red-600" aria-hidden="true">*</span>
+                          </p>
                           <textarea
                             value={section.content.join("\n\n")}
                             onChange={(e) =>
