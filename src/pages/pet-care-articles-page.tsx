@@ -98,6 +98,79 @@ const blankArticle: PetCareArticleInput = {
   sections: [{ id: "overview", title: "Overview", content: [""] }],
 };
 
+interface ArticleFieldError {
+  field: string;
+  tab: EditorTab;
+  message: string;
+}
+
+const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function validateArticleDraft(article: PetCareArticleInput): ArticleFieldError[] {
+  const errors: ArticleFieldError[] = [];
+  const add = (field: string, tab: EditorTab, message: string) =>
+    errors.push({ field, tab, message });
+
+  if (article.title.trim().length < 3) add("title", "content", "Enter at least 3 characters.");
+  if (article.excerpt.trim().length < 20) add("excerpt", "content", "Enter at least 20 characters.");
+  if (article.summary.trim().length < 20) add("summary", "content", "Enter at least 20 characters.");
+  if (!article.heroImageUrl && !article.heroImageKey && !article.heroImageFile) {
+    add("heroImage", "content", "Upload a hero image.");
+  }
+  if (article.heroImageAlt.trim().length < 5) {
+    add("heroImageAlt", "content", "Describe the image using at least 5 characters.");
+  }
+  if (!Number.isInteger(article.readingTimeMinutes) || article.readingTimeMinutes < 1) {
+    add("readingTimeMinutes", "content", "Enter a reading time of at least 1 minute.");
+  }
+  if (article.sections.length === 0) add("sections", "content", "Add at least one article section.");
+  article.sections.forEach((section) => {
+    if (!section.title.trim()) add(`section-title-${section.id}`, "content", "Enter a section heading.");
+    if (section.type === "IMAGE") {
+      if (!section.imageUrl) add(`section-image-${section.id}`, "content", "Upload a section image.");
+      if ((section.imageAlt?.trim().length ?? 0) < 5) {
+        add(`section-alt-${section.id}`, "content", "Describe the image using at least 5 characters.");
+      }
+    } else if (!section.content.length || section.content.some((item) => !item.trim())) {
+      add(`section-content-${section.id}`, "content", "Enter section content.");
+    }
+  });
+  if (article.keyTakeaways.some((item) => !item.trim())) {
+    add("keyTakeaways", "content", "Complete or remove blank key takeaways.");
+  }
+  if (article.monitorAtHome.some((item) => !item.trim())) {
+    add("monitorAtHome", "content", "Complete or remove blank monitoring items.");
+  }
+  if (article.faqs.some((faq) => !faq.question.trim() || !faq.answer.trim())) {
+    add("faqs", "content", "Complete both the question and answer, or remove the blank FAQ.");
+  }
+
+  if (!slugPattern.test(article.slug) || article.slug.length < 2) {
+    add("slug", "seo", "Use lowercase words separated by single hyphens.");
+  }
+  if (article.seoTitle.trim().length < 3 || article.seoTitle.length > 70) {
+    add("seoTitle", "seo", "Use between 3 and 70 characters.");
+  }
+  if (article.seoDescription.trim().length < 20 || article.seoDescription.length > 170) {
+    add("seoDescription", "seo", "Use between 20 and 170 characters.");
+  }
+  if (!article.relatedService.title.trim()) add("relatedServiceTitle", "seo", "Enter the related service name.");
+  if (!article.relatedService.path.startsWith("/")) {
+    add("relatedServicePath", "seo", "Enter a website path beginning with /.");
+  }
+  if (article.relatedArticleSlugs.some((slug) => !slugPattern.test(slug))) {
+    add("relatedArticleSlugs", "seo", "Use lowercase article slugs separated by commas.");
+  }
+  if (article.references.some((reference) => !reference.label.trim())) {
+    add("references", "seo", "Name every added reference or remove the blank reference.");
+  }
+  if (article.references.some((reference) => reference.url && !URL.canParse(reference.url))) {
+    add("references", "seo", "Enter complete reference URLs beginning with https://.");
+  }
+
+  return errors;
+}
+
 function articleToInput(article: PetCareArticle): PetCareArticleInput {
   const {
     id: _id,
@@ -140,15 +213,19 @@ function Field({
   children,
   wide = false,
   required = false,
+  fieldId,
+  error,
 }: {
   label: string;
   help?: string;
   children: React.ReactNode;
   wide?: boolean;
   required?: boolean;
+  fieldId?: string;
+  error?: string;
 }) {
   return (
-    <label className={cn("block", wide && "md:col-span-2")}>
+    <label id={fieldId ? `field-${fieldId}` : undefined} className={cn("block", wide && "md:col-span-2")}>
       <span className="mb-2 block text-xs font-bold uppercase text-[#60736B]">
         {label}
         {required ? <span className="ml-1 text-red-600" aria-hidden="true">*</span> : null}
@@ -157,6 +234,7 @@ function Field({
       {help ? (
         <span className="mt-1.5 block text-xs text-[#789087]">{help}</span>
       ) : null}
+      {error ? <span className="mt-1.5 block text-sm font-semibold text-red-700">{error}</span> : null}
     </label>
   );
 }
@@ -165,13 +243,17 @@ function StringListEditor({
   label,
   values,
   onChange,
+  fieldId,
+  error,
 }: {
   label: string;
   values: string[];
   onChange: (values: string[]) => void;
+  fieldId?: string;
+  error?: string;
 }) {
   return (
-    <div>
+    <div id={fieldId ? `field-${fieldId}` : undefined}>
       <p className="mb-2 text-xs font-bold uppercase text-[#60736B]">{label}</p>
       <div className="space-y-2">
         {values.map((value, index) => (
@@ -208,6 +290,7 @@ function StringListEditor({
         <Plus className="mr-2 h-4 w-4" />
         Add item
       </Button>
+      {error ? <p className="mt-2 text-sm font-semibold text-red-700">{error}</p> : null}
     </div>
   );
 }
@@ -216,17 +299,19 @@ function JsonField({
   label,
   value,
   onChange,
+  required = false,
 }: {
   label: string;
   value: unknown;
   onChange: (value: unknown) => void;
+  required?: boolean;
 }) {
   const [text, setText] = useState(() => JSON.stringify(value, null, 2));
   useEffect(() => setText(JSON.stringify(value, null, 2)), [value]);
   return (
     <label className="block">
       <span className="mb-2 block text-xs font-bold uppercase text-[#60736B]">
-        {label}
+        {label}{required ? <span className="ml-1 text-red-600" aria-hidden="true">*</span> : null}
       </span>
       <textarea
         value={text}
@@ -388,6 +473,7 @@ export function PetCareArticlesPage() {
   const [staleOnly, setStaleOnly] = useState(false);
   const [draft, setDraft] = useState<PetCareArticleInput>(blankArticle);
   const [invalidImageSectionId, setInvalidImageSectionId] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const articlesQuery = useQuery({
     queryKey: ["pet-care-articles", status, staleOnly, search],
     queryFn: () => getPetCareArticles({ status, stale: staleOnly, search }),
@@ -417,37 +503,40 @@ export function PetCareArticlesPage() {
   const refresh = () =>
     queryClient.invalidateQueries({ queryKey: ["pet-care-articles"] });
   const saveDraft = () => {
-    const invalidImageSection = draft.sections.find(
-      (section) =>
-        section.type === "IMAGE" &&
-        (!section.imageUrl || (section.imageAlt?.trim().length ?? 0) < 5),
-    );
-
-    if (invalidImageSection) {
-      setInvalidImageSectionId(invalidImageSection.id);
-      setPreview(false);
-      setTab("content");
-      toast.error(
-        invalidImageSection.imageUrl
-          ? "Add an image description of at least 5 characters before saving."
-          : "Upload an image for the image section before saving.",
+    const preparedDraft = {
+      ...draft,
+      keyTakeaways: draft.keyTakeaways.map((item) => item.trim()).filter(Boolean),
+      monitorAtHome: draft.monitorAtHome.map((item) => item.trim()).filter(Boolean),
+    };
+    const validationErrors = validateArticleDraft(preparedDraft);
+    const firstError = validationErrors[0];
+    if (firstError) {
+      setFieldErrors(Object.fromEntries(validationErrors.map((error) => [error.field, error.message])));
+      const imageSection = preparedDraft.sections.find((section) =>
+        [`section-image-${section.id}`, `section-alt-${section.id}`].includes(firstError.field),
       );
+      setInvalidImageSectionId(imageSection?.id ?? null);
+      setPreview(false);
+      setTab(firstError.tab);
+      toast.error(firstError.message);
       window.setTimeout(() => {
         document
-          .getElementById(`article-section-${invalidImageSection.id}`)
+          .getElementById(`field-${firstError.field}`)
           ?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 50);
       return;
     }
 
+    setFieldErrors({});
     setInvalidImageSectionId(null);
-    saveMutation.mutate();
+    setDraft(preparedDraft);
+    saveMutation.mutate(preparedDraft);
   };
   const saveMutation = useMutation({
-    mutationFn: () =>
+    mutationFn: (input: PetCareArticleInput) =>
       selected
-        ? updatePetCareArticle(selected.id, draft)
-        : createPetCareArticle(draft),
+        ? updatePetCareArticle(selected.id, input)
+        : createPetCareArticle(input),
     onSuccess: async (article) => {
       toast.success(selected ? "Article saved" : "Draft created");
       await refresh();
@@ -805,8 +894,9 @@ export function PetCareArticlesPage() {
                   <ArticlePreview article={draft} />
                 ) : tab === "content" ? (
                   <div className="grid gap-5 md:grid-cols-2">
-                    <Field label="Article title" wide required>
+                    <Field label="Article title" wide required fieldId="title" error={fieldErrors.title}>
                       <Input
+                        aria-invalid={Boolean(fieldErrors.title)}
                         value={draft.title}
                         onChange={(e) => set("title", e.target.value)}
                       />
@@ -832,8 +922,9 @@ export function PetCareArticlesPage() {
                         ))}
                       </Select>
                     </Field>
-                    <Field label="Reading time" required>
+                    <Field label="Reading time" required fieldId="readingTimeMinutes" error={fieldErrors.readingTimeMinutes}>
                       <Input
+                        aria-invalid={Boolean(fieldErrors.readingTimeMinutes)}
                         type="number"
                         min={1}
                         value={draft.readingTimeMinutes}
@@ -846,22 +937,26 @@ export function PetCareArticlesPage() {
                       label="Short introduction"
                       wide
                       required
+                      fieldId="excerpt"
+                      error={fieldErrors.excerpt}
                       help="Shown on cards and beneath the headline."
                     >
                       <textarea
+                        aria-invalid={Boolean(fieldErrors.excerpt)}
                         value={draft.excerpt}
                         onChange={(e) => set("excerpt", e.target.value)}
                         className="min-h-24 w-full rounded-lg border border-[#DDEBE2] p-3"
                       />
                     </Field>
-                    <Field label="Article summary" wide required>
+                    <Field label="Article summary" wide required fieldId="summary" error={fieldErrors.summary}>
                       <textarea
+                        aria-invalid={Boolean(fieldErrors.summary)}
                         value={draft.summary}
                         onChange={(e) => set("summary", e.target.value)}
                         className="min-h-28 w-full rounded-lg border border-[#DDEBE2] p-3"
                       />
                     </Field>
-                    <div className="md:col-span-2">
+                    <div id="field-heroImage" className="md:col-span-2">
                       <span className="mb-2 block text-xs font-bold uppercase text-[#60736B]">
                         Hero image <span className="text-red-600" aria-hidden="true">*</span>
                       </span>
@@ -880,17 +975,20 @@ export function PetCareArticlesPage() {
                         Use a clear landscape image with the subject near the
                         center.
                       </span>
+                      {fieldErrors.heroImage ? <p className="mt-2 text-sm font-semibold text-red-700">{fieldErrors.heroImage}</p> : null}
                     </div>
-                    <Field label="Image description" wide required>
+                    <Field label="Image description" wide required fieldId="heroImageAlt" error={fieldErrors.heroImageAlt}>
                       <Input
+                        aria-invalid={Boolean(fieldErrors.heroImageAlt)}
                         value={draft.heroImageAlt}
                         onChange={(e) => set("heroImageAlt", e.target.value)}
                       />
                     </Field>
-                    <div className="space-y-4 md:col-span-2">
+                    <div id="field-sections" className="space-y-4 md:col-span-2">
                       <p className="text-xs font-bold uppercase text-[#60736B]">
                         Article sections <span className="text-red-600" aria-hidden="true">*</span>
                       </p>
+                      {fieldErrors.sections ? <p className="text-sm font-semibold text-red-700">{fieldErrors.sections}</p> : null}
                       {draft.sections.map((section, index) =>
                         section.type === "IMAGE" ? (
                           <div
@@ -906,8 +1004,9 @@ export function PetCareArticlesPage() {
                             <p className="mb-2 text-xs font-bold uppercase text-[#60736B]">
                               Image section heading <span className="text-red-600" aria-hidden="true">*</span>
                             </p>
-                            <div className="flex gap-2">
+                            <div id={`field-section-title-${section.id}`} className="flex gap-2">
                               <Input
+                                aria-invalid={Boolean(fieldErrors[`section-title-${section.id}`])}
                                 value={section.title}
                                 placeholder="Image section heading"
                                 onChange={(event) =>
@@ -937,10 +1036,11 @@ export function PetCareArticlesPage() {
                                 <Trash2 className="h-4 w-4" />
                               </button>
                             </div>
+                            {fieldErrors[`section-title-${section.id}`] ? <p className="mt-2 text-sm font-semibold text-red-700">{fieldErrors[`section-title-${section.id}`]}</p> : null}
                             <p className="mb-2 mt-3 text-xs font-bold uppercase text-[#60736B]">
                               Section image <span className="text-red-600" aria-hidden="true">*</span>
                             </p>
-                            <div className="mt-3">
+                            <div id={`field-section-image-${section.id}`} className="mt-3">
                               <ImageUploadControl
                                 url={section.imageUrl}
                                 alt={section.imageAlt}
@@ -967,8 +1067,9 @@ export function PetCareArticlesPage() {
                                 }
                               />
                             </div>
+                            {fieldErrors[`section-image-${section.id}`] ? <p className="mt-2 text-sm font-semibold text-red-700">{fieldErrors[`section-image-${section.id}`]}</p> : null}
                             <div className="mt-3 grid gap-3 md:grid-cols-2">
-                              <label>
+                              <label id={`field-section-alt-${section.id}`}>
                                 <span className="mb-2 block text-xs font-bold uppercase text-[#60736B]">
                                   Image description <span className="text-red-600" aria-hidden="true">*</span>
                                 </span>
@@ -1017,6 +1118,7 @@ export function PetCareArticlesPage() {
                                 />
                               </label>
                             </div>
+                            {fieldErrors[`section-alt-${section.id}`] ? <p className="mt-2 text-sm font-semibold text-red-700">{fieldErrors[`section-alt-${section.id}`]}</p> : null}
                             {invalidImageSectionId === section.id ? (
                               <p className="mt-2 text-sm font-semibold text-red-700">
                                 {section.imageUrl
@@ -1033,8 +1135,9 @@ export function PetCareArticlesPage() {
                           <p className="mb-2 text-xs font-bold uppercase text-[#60736B]">
                             Section heading <span className="text-red-600" aria-hidden="true">*</span>
                           </p>
-                          <div className="flex gap-2">
+                          <div id={`field-section-title-${section.id}`} className="flex gap-2">
                             <Input
+                              aria-invalid={Boolean(fieldErrors[`section-title-${section.id}`])}
                               value={section.title}
                               placeholder="Section heading"
                               onChange={(e) =>
@@ -1067,10 +1170,13 @@ export function PetCareArticlesPage() {
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
+                          {fieldErrors[`section-title-${section.id}`] ? <p className="mt-2 text-sm font-semibold text-red-700">{fieldErrors[`section-title-${section.id}`]}</p> : null}
                           <p className="mb-2 mt-3 text-xs font-bold uppercase text-[#60736B]">
                             Section content <span className="text-red-600" aria-hidden="true">*</span>
                           </p>
                           <textarea
+                            id={`field-section-content-${section.id}`}
+                            aria-invalid={Boolean(fieldErrors[`section-content-${section.id}`])}
                             value={section.content.join("\n\n")}
                             onChange={(e) =>
                               set(
@@ -1090,6 +1196,7 @@ export function PetCareArticlesPage() {
                             placeholder="Write the section body. Leave a blank line between paragraphs."
                             className="mt-3 min-h-36 w-full rounded-lg border border-[#DDEBE2] p-3"
                           />
+                          {fieldErrors[`section-content-${section.id}`] ? <p className="mt-2 text-sm font-semibold text-red-700">{fieldErrors[`section-content-${section.id}`]}</p> : null}
                         </div>
                       ))}
                       <div className="flex flex-wrap gap-2">
@@ -1136,18 +1243,23 @@ export function PetCareArticlesPage() {
                     </div>
                     <StringListEditor
                       label="Key takeaways"
+                      fieldId="keyTakeaways"
+                      error={fieldErrors.keyTakeaways}
                       values={draft.keyTakeaways}
                       onChange={(values) => set("keyTakeaways", values)}
                     />
                     <StringListEditor
                       label="What to monitor at home"
+                      fieldId="monitorAtHome"
+                      error={fieldErrors.monitorAtHome}
                       values={draft.monitorAtHome}
                       onChange={(values) => set("monitorAtHome", values)}
                     />
-                    <div className="space-y-3 md:col-span-2">
+                    <div id="field-faqs" className="space-y-3 md:col-span-2">
                       <p className="text-xs font-bold uppercase text-[#60736B]">
                         Frequently asked questions
                       </p>
+                      {fieldErrors.faqs ? <p className="text-sm font-semibold text-red-700">{fieldErrors.faqs}</p> : null}
                       {draft.faqs.map((faq, index) => (
                         <div
                           key={index}
@@ -1238,9 +1350,13 @@ export function PetCareArticlesPage() {
                     <Field
                       label="Page URL slug"
                       wide
+                      required
+                      fieldId="slug"
+                      error={fieldErrors.slug}
                       help="Lowercase words separated with hyphens."
                     >
                       <Input
+                        aria-invalid={Boolean(fieldErrors.slug)}
                         value={draft.slug}
                         onChange={(e) =>
                           set(
@@ -1255,9 +1371,13 @@ export function PetCareArticlesPage() {
                     <Field
                       label="SEO title"
                       wide
+                      required
+                      fieldId="seoTitle"
+                      error={fieldErrors.seoTitle}
                       help={`${draft.seoTitle.length}/70 characters`}
                     >
                       <Input
+                        aria-invalid={Boolean(fieldErrors.seoTitle)}
                         value={draft.seoTitle}
                         onChange={(e) => set("seoTitle", e.target.value)}
                       />
@@ -1265,9 +1385,13 @@ export function PetCareArticlesPage() {
                     <Field
                       label="Meta description"
                       wide
+                      required
+                      fieldId="seoDescription"
+                      error={fieldErrors.seoDescription}
                       help={`${draft.seoDescription.length}/170 characters`}
                     >
                       <textarea
+                        aria-invalid={Boolean(fieldErrors.seoDescription)}
                         value={draft.seoDescription}
                         onChange={(e) => set("seoDescription", e.target.value)}
                         className="min-h-24 w-full rounded-lg border border-[#DDEBE2] p-3"
@@ -1291,8 +1415,9 @@ export function PetCareArticlesPage() {
                         }
                       />
                     </Field>
-                    <Field label="Related service name">
+                    <Field label="Related service name" required fieldId="relatedServiceTitle" error={fieldErrors.relatedServiceTitle}>
                       <Input
+                        aria-invalid={Boolean(fieldErrors.relatedServiceTitle)}
                         value={draft.relatedService.title}
                         onChange={(e) =>
                           set("relatedService", {
@@ -1302,8 +1427,9 @@ export function PetCareArticlesPage() {
                         }
                       />
                     </Field>
-                    <Field label="Related service path">
+                    <Field label="Related service path" required fieldId="relatedServicePath" error={fieldErrors.relatedServicePath}>
                       <Input
+                        aria-invalid={Boolean(fieldErrors.relatedServicePath)}
                         value={draft.relatedService.path}
                         onChange={(e) =>
                           set("relatedService", {
@@ -1313,7 +1439,7 @@ export function PetCareArticlesPage() {
                         }
                       />
                     </Field>
-                    <Field label="Related article slugs" wide>
+                    <Field label="Related article slugs" wide fieldId="relatedArticleSlugs" error={fieldErrors.relatedArticleSlugs}>
                       <Input
                         value={draft.relatedArticleSlugs.join(", ")}
                         onChange={(e) =>
@@ -1327,10 +1453,11 @@ export function PetCareArticlesPage() {
                         }
                       />
                     </Field>
-                    <div className="space-y-3 md:col-span-2">
+                    <div id="field-references" className="space-y-3 md:col-span-2">
                       <p className="text-xs font-bold uppercase text-[#60736B]">
                         References
                       </p>
+                      {fieldErrors.references ? <p className="text-sm font-semibold text-red-700">{fieldErrors.references}</p> : null}
                       {draft.references.map((reference, index) => (
                         <div key={index} className="grid gap-2 md:grid-cols-2">
                           <Input
@@ -1425,7 +1552,7 @@ export function PetCareArticlesPage() {
                         A registered veterinarian must approve this article
                         before staff can publish it.
                       </p>
-                      <Field label="Assigned veterinarian">
+                      <Field label="Assigned veterinarian" required help="Required before submitting for veterinary review.">
                         <Select
                           value={draft.reviewerId ?? ""}
                           onChange={(e) =>
@@ -1543,6 +1670,7 @@ export function PetCareArticlesPage() {
                     <div className="grid gap-5 lg:grid-cols-2">
                       <JsonField
                         label="Sections"
+                        required
                         value={draft.sections}
                         onChange={(value) =>
                           set("sections", value as PetCareArticleInput["sections"])
@@ -1587,6 +1715,7 @@ export function PetCareArticlesPage() {
                       />
                       <JsonField
                         label="Related service"
+                        required
                         value={draft.relatedService}
                         onChange={(value) =>
                           set(
