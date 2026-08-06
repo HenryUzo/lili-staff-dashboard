@@ -501,13 +501,16 @@ export function PetCareArticlesPage() {
     }
   }, [isCreating]);
   const refresh = () =>
-    queryClient.invalidateQueries({ queryKey: ["pet-care-articles"] });
-  const saveDraft = () => {
-    const preparedDraft = {
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["pet-care-articles"] }),
+      queryClient.invalidateQueries({ queryKey: ["pet-care-article", articleId] }),
+    ]);
+  const prepareDraft = () => ({
       ...draft,
       keyTakeaways: draft.keyTakeaways.map((item) => item.trim()).filter(Boolean),
       monitorAtHome: draft.monitorAtHome.map((item) => item.trim()).filter(Boolean),
-    };
+    });
+  const showValidationErrors = (preparedDraft: PetCareArticleInput) => {
     const validationErrors = validateArticleDraft(preparedDraft);
     const firstError = validationErrors[0];
     if (firstError) {
@@ -524,11 +527,16 @@ export function PetCareArticlesPage() {
           .getElementById(`field-${firstError.field}`)
           ?.scrollIntoView({ behavior: "smooth", block: "center" });
       }, 50);
-      return;
+      return true;
     }
 
     setFieldErrors({});
     setInvalidImageSectionId(null);
+    return false;
+  };
+  const saveDraft = () => {
+    const preparedDraft = prepareDraft();
+    if (showValidationErrors(preparedDraft)) return;
     setDraft(preparedDraft);
     saveMutation.mutate(preparedDraft);
   };
@@ -560,6 +568,39 @@ export function PetCareArticlesPage() {
     onError: (error) =>
       toast.error(getErrorMessage(error, "Could not update article status")),
   });
+  const submitReviewMutation = useMutation({
+    mutationFn: async ({ id, input }: { id: string; input: PetCareArticleInput }) => {
+      await updatePetCareArticle(id, input);
+      return runPetCareArticleAction(id, "submit-review");
+    },
+    onSuccess: async () => {
+      toast.success("Article saved and submitted for veterinary review");
+      await refresh();
+    },
+    onError: (error) =>
+      toast.error(getErrorMessage(error, "Could not submit article for review")),
+  });
+  const submitForReview = () => {
+    if (!selected) return;
+    const preparedDraft = prepareDraft();
+    if (showValidationErrors(preparedDraft)) return;
+    if (!preparedDraft.reviewerId) {
+      setPreview(false);
+      setTab("review");
+      setFieldErrors((current) => ({ ...current, reviewerId: "Choose a veterinarian before submitting for review." }));
+      toast.error("Choose a veterinarian before submitting for review.");
+      window.setTimeout(() => {
+        document.getElementById("field-reviewerId")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
+      return;
+    }
+    setFieldErrors((current) => {
+      const { reviewerId: _reviewerError, ...remaining } = current;
+      return remaining;
+    });
+    setDraft(preparedDraft);
+    submitReviewMutation.mutate({ id: selected.id, input: preparedDraft });
+  };
   const shareMutation = useMutation({
     mutationFn: ({
       id,
@@ -1552,12 +1593,25 @@ export function PetCareArticlesPage() {
                         A registered veterinarian must approve this article
                         before staff can publish it.
                       </p>
-                      <Field label="Assigned veterinarian" required help="Required before submitting for veterinary review.">
+                      <Field
+                        label="Assigned veterinarian"
+                        required
+                        fieldId="reviewerId"
+                        error={fieldErrors.reviewerId}
+                        help="Required before submitting for veterinary review. Current edits are saved automatically when you submit."
+                      >
                         <Select
                           value={draft.reviewerId ?? ""}
-                          onChange={(e) =>
-                            set("reviewerId", e.target.value || null)
-                          }
+                          aria-invalid={Boolean(fieldErrors.reviewerId)}
+                          onChange={(e) => {
+                            set("reviewerId", e.target.value || null);
+                            if (e.target.value) {
+                              setFieldErrors((current) => {
+                                const { reviewerId: _reviewerError, ...remaining } = current;
+                                return remaining;
+                              });
+                            }
+                          }}
                         >
                           <option value="">Choose a veterinarian</option>
                           {reviewersQuery.data
@@ -1584,8 +1638,8 @@ export function PetCareArticlesPage() {
                         </Button>
                       ) : (
                         <p className="mt-4 text-sm font-semibold text-[#8A5900]">
-                          Save and submit the article for review before creating
-                          the approval link.
+                          Submit the article for review before creating the
+                          veterinarian approval link.
                         </p>
                       )}
                     </section>
@@ -1743,15 +1797,15 @@ export function PetCareArticlesPage() {
                   {selected.status === "DRAFT" ? (
                     <Button
                       variant="outline"
-                      onClick={() =>
-                        actionMutation.mutate({
-                          id: selected.id,
-                          action: "submit-review",
-                        })
-                      }
+                      onClick={submitForReview}
+                      disabled={submitReviewMutation.isPending}
                     >
-                      <Send className="mr-2 h-4 w-4" />
-                      Submit for review
+                      {submitReviewMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="mr-2 h-4 w-4" />
+                      )}
+                      {submitReviewMutation.isPending ? "Saving and submitting..." : "Submit for review"}
                     </Button>
                   ) : null}
                   {selected.status === "APPROVED" ? (
