@@ -6,6 +6,7 @@ export interface PetCareReviewer {
   id: string;
   slug: string;
   name: string;
+  email: string | null;
   credentials: string;
   role: string;
   photoUrl: string | null;
@@ -79,6 +80,8 @@ export interface PetCarePreviewShare {
   expiresAt: string;
   revokedAt: string | null;
   createdAt: string;
+  invitationRecipient: string | null;
+  invitationSentAt: string | null;
   comments: PetCarePreviewComment[];
 }
 

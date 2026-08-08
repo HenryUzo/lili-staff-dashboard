@@ -11,6 +11,7 @@ import {
   ImageUp,
   Loader2,
   MessageSquare,
+  Mail,
   Plus,
   Search,
   Send,
@@ -26,8 +27,10 @@ import {
   getPetCareArticles,
   getPetCareReviewers,
   runPetCareArticleAction,
+  sendPetCareReviewInvitation,
   uploadPetCareHeroImage,
   updatePetCareArticle,
+  updatePetCareReviewer,
 } from "@/api/pet-care";
 import { getErrorMessage } from "@/api/http";
 import { Button } from "@/components/ui/button";
@@ -474,6 +477,7 @@ export function PetCareArticlesPage() {
   const [draft, setDraft] = useState<PetCareArticleInput>(blankArticle);
   const [invalidImageSectionId, setInvalidImageSectionId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [reviewerEmail, setReviewerEmail] = useState("");
   const articlesQuery = useQuery({
     queryKey: ["pet-care-articles", status, staleOnly, search],
     queryFn: () => getPetCareArticles({ status, stale: staleOnly, search }),
@@ -488,6 +492,10 @@ export function PetCareArticlesPage() {
     queryFn: getPetCareReviewers,
   });
   const selected = articleQuery.data ?? null;
+  const assignedReviewer = reviewersQuery.data?.find((reviewer) => reviewer.id === draft.reviewerId) ?? null;
+  useEffect(() => {
+    setReviewerEmail(assignedReviewer?.email ?? "");
+  }, [assignedReviewer?.id, assignedReviewer?.email]);
   useEffect(() => {
     if (selected) {
       setDraft(articleToInput(selected));
@@ -621,6 +629,24 @@ export function PetCareArticlesPage() {
     },
     onError: (error) =>
       toast.error(getErrorMessage(error, "Could not create preview link")),
+  });
+  const reviewerEmailMutation = useMutation({
+    mutationFn: ({ id, email }: { id: string; email: string }) =>
+      updatePetCareReviewer(id, { email }),
+    onSuccess: async () => {
+      toast.success("Veterinarian email saved");
+      await queryClient.invalidateQueries({ queryKey: ["pet-care-reviewers"] });
+      await refresh();
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Could not save veterinarian email")),
+  });
+  const invitationMutation = useMutation({
+    mutationFn: sendPetCareReviewInvitation,
+    onSuccess: async (invitation) => {
+      toast.success(`Review invitation sent to ${invitation.recipient}`);
+      await refresh();
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Could not send review invitation")),
   });
   const imageUploadMutation = useMutation({
     mutationFn: uploadPetCareHeroImage,
@@ -1623,19 +1649,61 @@ export function PetCareArticlesPage() {
                             ))}
                         </Select>
                       </Field>
+                      {assignedReviewer ? (
+                        <div className="mt-4 rounded-lg border border-[#DDEBE2] bg-[#F7FAF8] p-4">
+                          <label htmlFor="reviewer-email" className="text-sm font-bold text-[#274A3E]">
+                            Veterinarian email <span className="text-red-600">*</span>
+                          </label>
+                          <p className="mt-1 text-xs text-[#60736B]">
+                            The private approval invitation will be sent to this address.
+                          </p>
+                          <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+                            <Input
+                              id="reviewer-email"
+                              type="email"
+                              value={reviewerEmail}
+                              placeholder="veterinarian@example.com"
+                              onChange={(event) => setReviewerEmail(event.target.value)}
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              disabled={reviewerEmailMutation.isPending || !reviewerEmail.trim() || reviewerEmail === assignedReviewer.email}
+                              onClick={() => reviewerEmailMutation.mutate({ id: assignedReviewer.id, email: reviewerEmail.trim() })}
+                            >
+                              {reviewerEmailMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                              Save email
+                            </Button>
+                          </div>
+                        </div>
+                      ) : null}
                       {selected?.status === "IN_REVIEW" ? (
-                        <Button
-                          className="mt-4"
-                          onClick={() =>
-                            shareMutation.mutate({
-                              id: selected.id,
-                              shareType: "REVIEWER",
-                            })
-                          }
-                        >
-                          <Copy className="mr-2 h-4 w-4" />
-                          Copy veterinarian approval link
-                        </Button>
+                        <div className="mt-4 space-y-3">
+                          <div className="flex flex-wrap gap-3">
+                            <Button
+                              disabled={invitationMutation.isPending || !assignedReviewer?.email}
+                              onClick={() => invitationMutation.mutate(selected.id)}
+                            >
+                              {invitationMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                              Send review invitation
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => shareMutation.mutate({ id: selected.id, shareType: "REVIEWER" })}
+                            >
+                              <Copy className="mr-2 h-4 w-4" />
+                              Copy approval link
+                            </Button>
+                          </div>
+                          {!assignedReviewer?.email ? (
+                            <p className="text-sm font-semibold text-[#A33A2B]">Save the assigned veterinarian's email before sending.</p>
+                          ) : null}
+                          {selected.previewShares.find((share) => share.invitationSentAt) ? (
+                            <p className="text-sm text-[#41695B]">
+                              Last invitation sent to {selected.previewShares.find((share) => share.invitationSentAt)?.invitationRecipient} on {new Date(selected.previewShares.find((share) => share.invitationSentAt)!.invitationSentAt!).toLocaleString()}.
+                            </p>
+                          ) : null}
+                        </div>
                       ) : (
                         <p className="mt-4 text-sm font-semibold text-[#8A5900]">
                           Submit the article for review before creating the

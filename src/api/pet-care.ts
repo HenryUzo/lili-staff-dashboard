@@ -46,6 +46,18 @@ export async function getPetCareReviewers() {
   return response.data.items;
 }
 
+export async function updatePetCareReviewer(id: string, input: Partial<PetCareReviewer>) {
+  return (await api.patch<PetCareReviewer>(`/api/admin/pet-care/reviewers/${id}`, input)).data;
+}
+
+export async function sendPetCareReviewInvitation(id: string) {
+  return (await api.post<{
+    recipient: string;
+    invitationSentAt: string;
+    expiresAt: string;
+  }>(`/api/admin/pet-care/articles/${id}/review-invitation`)).data;
+}
+
 export async function createPetCareArticle(input: PetCareArticleInput) {
   return (await api.post<PetCareArticle>("/api/admin/pet-care/articles", input)).data;
 }
