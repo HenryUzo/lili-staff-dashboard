@@ -5,6 +5,8 @@ import { NewPatientRequestsPage } from "@/pages/new-patient-requests-page";
 import { OverviewPage } from "@/pages/overview-page";
 import { AppointmentRequestsPage } from "@/pages/appointment-requests-page";
 import { PhotoshootGuidelinesPage } from "@/pages/photoshoot-guidelines-page";
+import { PetCareArticlesPage } from "@/pages/pet-care-articles-page";
+import { PetCareReviewersPage } from "@/pages/pet-care-reviewers-page";
 import { ProtectedRoute } from "@/routes/protected-route";
 
 export const appRouter = createBrowserRouter([
@@ -37,6 +39,22 @@ export const appRouter = createBrowserRouter([
           {
             path: "new-patients/:requestId",
             element: <NewPatientRequestsPage />
+          },
+          {
+            path: "pet-care",
+            element: <PetCareArticlesPage />
+          },
+          {
+            path: "pet-care/new",
+            element: <PetCareArticlesPage />
+          },
+          {
+            path: "pet-care/reviewers",
+            element: <PetCareReviewersPage />
+          },
+          {
+            path: "pet-care/:articleId",
+            element: <PetCareArticlesPage />
           },
           {
             path: "brand-guide/photoshoot-guidelines",

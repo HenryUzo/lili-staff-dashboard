@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpenText, ChevronDown, ClipboardList, LayoutDashboard, PawPrint, ShieldCheck } from "lucide-react";
+import { BookOpenText, ChevronDown, ClipboardList, LayoutDashboard, PawPrint, ShieldCheck, Stethoscope } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import careOperationsHeartline from "@/assets/illustrations/care-operations-heartline.png";
 import dogCatSidebarIllustration from "@/assets/illustrations/dog-cat-sidebar-illustration.png";
@@ -10,7 +10,9 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
   { to: "/appointments", label: "Appointment Requests", icon: ClipboardList },
-  { to: "/new-patients", label: "New Patient Requests", icon: PawPrint }
+  { to: "/new-patients", label: "New Patient Requests", icon: PawPrint },
+  { to: "/pet-care", label: "Pet Care Library", icon: BookOpenText, exclude: "/pet-care/reviewers" },
+  { to: "/pet-care/reviewers", label: "Veterinarians", icon: Stethoscope }
 ];
 
 const brandGuideItems = [
@@ -73,7 +75,7 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
             className={({ isActive }) =>
               cn(
                 "flex items-center gap-3 rounded-[14px] px-4 py-3 text-sm font-[650] transition",
-                isActive
+                isActive && !("exclude" in item && item.exclude && location.pathname.startsWith(item.exclude))
                   ? "bg-[#EAF7F0] font-[750] text-[#087C48]"
                   : "text-[#102E24] hover:bg-[#F5FBF7] hover:text-[#087C48]"
               )
