@@ -761,6 +761,32 @@ export function PetCareArticlesPage() {
     [sections[index], sections[nextIndex]] = [sections[nextIndex], sections[index]];
     set("sections", sections);
   };
+  const insertSectionBelow = (index: number, type: "CONTENT" | "IMAGE") => {
+    const section = type === "CONTENT"
+      ? {
+          id: `section-${Date.now()}`,
+          title: "",
+          type: "CONTENT" as const,
+          content: [""],
+        }
+      : {
+          id: `image-${Date.now()}`,
+          title: "Image",
+          type: "IMAGE" as const,
+          content: [],
+          imageUrl: null,
+          imageAlt: "",
+          caption: null,
+        };
+    setDraft((current) => ({
+      ...current,
+      sections: [
+        ...current.sections.slice(0, index + 1),
+        section,
+        ...current.sections.slice(index + 1),
+      ],
+    }));
+  };
   const currentStatus = selected?.status ?? "DRAFT";
 
   if (isLibrary) {
@@ -1281,6 +1307,14 @@ export function PetCareArticlesPage() {
                                   : "Upload an image before saving this section."}
                               </p>
                             ) : null}
+                            <div className="mt-4 flex flex-wrap gap-2 border-t border-[#DDEBE2] pt-4">
+                              <Button type="button" variant="outline" size="sm" onClick={() => insertSectionBelow(index, "CONTENT")}>
+                                <Plus className="mr-2 h-4 w-4" /> Add section below
+                              </Button>
+                              <Button type="button" variant="outline" size="sm" onClick={() => insertSectionBelow(index, "IMAGE")}>
+                                <ImageUp className="mr-2 h-4 w-4" /> Add image below
+                              </Button>
+                            </div>
                           </div>
                         ) : (
                         <div
@@ -1359,6 +1393,14 @@ export function PetCareArticlesPage() {
                             className="mt-3 min-h-36 w-full rounded-lg border border-[#DDEBE2] p-3"
                           />
                           {fieldErrors[`section-content-${section.id}`] ? <p className="mt-2 text-sm font-semibold text-red-700">{fieldErrors[`section-content-${section.id}`]}</p> : null}
+                          <div className="mt-4 flex flex-wrap gap-2 border-t border-[#DDEBE2] pt-4">
+                            <Button type="button" variant="outline" size="sm" onClick={() => insertSectionBelow(index, "CONTENT")}>
+                              <Plus className="mr-2 h-4 w-4" /> Add section below
+                            </Button>
+                            <Button type="button" variant="outline" size="sm" onClick={() => insertSectionBelow(index, "IMAGE")}>
+                              <ImageUp className="mr-2 h-4 w-4" /> Add image below
+                            </Button>
+                          </div>
                         </div>
                       ))}
                       <div className="flex flex-wrap gap-2">
