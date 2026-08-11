@@ -39,6 +39,7 @@ import { getErrorMessage } from "@/api/http";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { RichTextEditor, sanitizeRichTextHtml } from "@/components/ui/rich-text-editor";
 import { cn } from "@/lib/utils";
 import type {
   PetCareArticle,
@@ -454,9 +455,11 @@ function ArticlePreview({ article }: { article: PetCareArticleInput }) {
             </figure>
           ) : (
             section.content.map((paragraph, index) => (
-              <p key={index} className="mt-3 leading-8 text-[#415D52]">
-                {paragraph}
-              </p>
+              <div
+                key={index}
+                className="rich-text-content mt-3 leading-8 text-[#415D52] [&_a]:font-semibold [&_a]:text-[#087C48] [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-l-4 [&_blockquote]:border-[#A8D5BA] [&_blockquote]:pl-4 [&_blockquote]:italic [&_h3]:mt-5 [&_h3]:text-xl [&_h3]:font-extrabold [&_li]:ml-5 [&_ol]:my-3 [&_ol]:list-decimal [&_p]:mt-3 [&_ul]:my-3 [&_ul]:list-disc]"
+                dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(paragraph) }}
+              />
             ))
           )}
         </section>
@@ -1370,27 +1373,23 @@ export function PetCareArticlesPage() {
                           <p className="mb-2 mt-3 text-xs font-bold uppercase text-[#60736B]">
                             Section content <span className="text-red-600" aria-hidden="true">*</span>
                           </p>
-                          <textarea
+                          <RichTextEditor
                             id={`field-section-content-${section.id}`}
                             aria-invalid={Boolean(fieldErrors[`section-content-${section.id}`])}
                             value={section.content.join("\n\n")}
-                            onChange={(e) =>
+                            onChange={(content) =>
                               set(
                                 "sections",
                                 draft.sections.map((item, itemIndex) =>
                                   itemIndex === index
                                     ? {
                                         ...item,
-                                        content: e.target.value
-                                          .split(/\n\s*\n/)
-                                          .filter(Boolean),
+                                        content: [content],
                                       }
                                     : item,
                                 ),
                               )
                             }
-                            placeholder="Write the section body. Leave a blank line between paragraphs."
-                            className="mt-3 min-h-36 w-full rounded-lg border border-[#DDEBE2] p-3"
                           />
                           {fieldErrors[`section-content-${section.id}`] ? <p className="mt-2 text-sm font-semibold text-red-700">{fieldErrors[`section-content-${section.id}`]}</p> : null}
                           <div className="mt-4 flex flex-wrap gap-2 border-t border-[#DDEBE2] pt-4">
