@@ -457,7 +457,7 @@ function ArticlePreview({ article }: { article: PetCareArticleInput }) {
             section.content.map((paragraph, index) => (
               <div
                 key={index}
-                className="rich-text-content mt-3 leading-8 text-[#415D52] [&_a]:font-semibold [&_a]:text-[#087C48] [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-l-4 [&_blockquote]:border-[#A8D5BA] [&_blockquote]:pl-4 [&_blockquote]:italic [&_h3]:mt-5 [&_h3]:text-xl [&_h3]:font-extrabold [&_li]:ml-5 [&_ol]:my-3 [&_ol]:list-decimal [&_p]:mt-3 [&_ul]:my-3 [&_ul]:list-disc]"
+                className="rich-text-content mt-3 leading-8 text-[#415D52] [&_a]:font-semibold [&_a]:text-[#087C48] [&_a]:underline [&_a]:underline-offset-4 [&_blockquote]:border-l-4 [&_blockquote]:border-[#A8D5BA] [&_blockquote]:pl-4 [&_blockquote]:italic [&_h2]:mt-6 [&_h2]:text-2xl [&_h2]:font-extrabold [&_h3]:mt-5 [&_h3]:text-xl [&_h3]:font-extrabold [&_h4]:mt-4 [&_h4]:text-lg [&_h4]:font-bold [&_li]:ml-5 [&_ol]:my-3 [&_ol]:list-decimal [&_p]:mt-3 [&_table]:my-5 [&_table]:w-full [&_table]:border-collapse [&_td]:border [&_td]:border-[#DDEBE2] [&_td]:p-3 [&_th]:border [&_th]:border-[#DDEBE2] [&_th]:bg-[#EDF7F0] [&_th]:p-3 [&_th]:text-left [&_ul]:my-3 [&_ul]:list-disc]"
                 dangerouslySetInnerHTML={{ __html: sanitizeRichTextHtml(paragraph) }}
               />
             ))
@@ -790,6 +790,9 @@ export function PetCareArticlesPage() {
       ],
     }));
   };
+  const togglePreview = () => {
+    setPreview((value) => !value);
+  };
   const currentStatus = selected?.status ?? "DRAFT";
 
   if (isLibrary) {
@@ -1017,8 +1020,10 @@ export function PetCareArticlesPage() {
                   </div>
                   <div className="flex gap-2">
                     <Button
+                      type="button"
                       variant="outline"
-                      onClick={() => setPreview((value) => !value)}
+                      aria-pressed={preview}
+                      onClick={togglePreview}
                     >
                       {preview ? (
                         <FileEdit className="mr-2 h-4 w-4" />
