@@ -14,6 +14,8 @@ export interface PetCareReviewer {
   isActive: boolean;
 }
 
+export type PetCareReviewerInput = Omit<PetCareReviewer, "id">;
+
 export interface PetCareArticleSection {
   id: string;
   title: string;

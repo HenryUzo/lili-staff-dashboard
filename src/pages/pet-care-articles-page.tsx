@@ -4,6 +4,8 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Archive,
   ArrowLeft,
+  ArrowDown,
+  ArrowUp,
   BookOpenText,
   Copy,
   Eye,
@@ -17,6 +19,7 @@ import {
   Send,
   Trash2,
   Upload,
+  Users,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -458,6 +461,71 @@ function ArticlePreview({ article }: { article: PetCareArticleInput }) {
           )}
         </section>
       ))}
+      {article.warningCallout ? (
+        <aside className="mt-10 border-l-4 border-[#E2463C] bg-[#FFF5F2] px-5 py-4">
+          <h3 className="font-extrabold text-[#7A2923]">Safety note</h3>
+          <p className="mt-2 leading-7 text-[#603D38]">{article.warningCallout}</p>
+        </aside>
+      ) : null}
+      {article.keyTakeaways.length ? (
+        <section className="mt-10 border-t border-[#DDEBE2] pt-8">
+          <h3 className="text-2xl font-extrabold">Key takeaways</h3>
+          <ul className="mt-4 space-y-3">
+            {article.keyTakeaways.map((item, index) => (
+              <li key={index} className="flex gap-3 leading-7 text-[#415D52]">
+                <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#087C48]" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {article.monitorAtHome.length ? (
+        <section className="mt-10 border-t border-[#DDEBE2] pt-8">
+          <h3 className="text-2xl font-extrabold">What to monitor at home</h3>
+          <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+            {article.monitorAtHome.map((item, index) => (
+              <li key={index} className="rounded-lg border border-[#DDEBE2] bg-[#F7FAF8] p-4 leading-7 text-[#415D52]">
+                {item}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+      {article.vetQuote ? (
+        <blockquote className="mt-10 border-y border-[#DDEBE2] py-7 text-xl font-semibold italic leading-8 text-[#274A3E]">
+          &ldquo;{article.vetQuote}&rdquo;
+        </blockquote>
+      ) : null}
+      {article.faqs.length ? (
+        <section className="mt-10 border-t border-[#DDEBE2] pt-8">
+          <h3 className="text-2xl font-extrabold">Frequently asked questions</h3>
+          <div className="mt-4 divide-y divide-[#DDEBE2] border-y border-[#DDEBE2]">
+            {article.faqs.map((faq, index) => (
+              <div key={index} className="py-5">
+                <h4 className="font-extrabold text-[#102E24]">{faq.question}</h4>
+                <p className="mt-2 leading-7 text-[#415D52]">{faq.answer}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+      {article.references.length ? (
+        <section className="mt-10 border-t border-[#DDEBE2] pt-8">
+          <h3 className="text-xl font-extrabold">Veterinary references</h3>
+          <ol className="mt-4 space-y-2 text-sm leading-6 text-[#506B60]">
+            {article.references.map((reference, index) => (
+              <li key={index}>
+                {index + 1}. {reference.url ? (
+                  <a className="font-semibold text-[#087C48] underline underline-offset-4" href={reference.url} target="_blank" rel="noreferrer">
+                    {reference.label}
+                  </a>
+                ) : reference.label}
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
     </article>
   );
 }
@@ -686,6 +754,13 @@ export function PetCareArticlesPage() {
     key: K,
     value: PetCareArticleInput[K],
   ) => setDraft((current) => ({ ...current, [key]: value }));
+  const moveSection = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= draft.sections.length) return;
+    const sections = [...draft.sections];
+    [sections[index], sections[nextIndex]] = [sections[nextIndex], sections[index]];
+    set("sections", sections);
+  };
   const currentStatus = selected?.status ?? "DRAFT";
 
   if (isLibrary) {
@@ -703,10 +778,16 @@ export function PetCareArticlesPage() {
               Find, review, and manage every Pet Care article.
             </p>
           </div>
-          <Button onClick={() => navigate("/pet-care/new")}>
-            <Plus className="mr-2 h-4 w-4" />
-            New article
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="outline" onClick={() => navigate("/pet-care/reviewers")}>
+              <Users className="mr-2 h-4 w-4" />
+              Manage veterinarians
+            </Button>
+            <Button onClick={() => navigate("/pet-care/new")}>
+              <Plus className="mr-2 h-4 w-4" />
+              New article
+            </Button>
+          </div>
         </header>
         <section className="rounded-[18px] border border-[#DDEBE2] bg-white p-5">
           <div className="grid gap-3 md:grid-cols-[minmax(240px,1fr)_220px_180px]">
@@ -1068,9 +1149,16 @@ export function PetCareArticlesPage() {
                                 : "border-[#DDEBE2]",
                             )}
                           >
-                            <p className="mb-2 text-xs font-bold uppercase text-[#60736B]">
-                              Image section heading <span className="text-red-600" aria-hidden="true">*</span>
-                            </p>
+                            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-xs font-bold uppercase text-[#60736B]">
+                                Image section heading <span className="text-red-600" aria-hidden="true">*</span>
+                              </p>
+                              <div className="flex items-center gap-1" aria-label={`Image section position ${index + 1} of ${draft.sections.length}`}>
+                                <span className="mr-1 text-xs font-semibold text-[#60736B]">Position {index + 1}</span>
+                                <button type="button" aria-label="Move image section up" title="Move up" disabled={index === 0} onClick={() => moveSection(index, -1)} className="rounded-md border p-1.5 disabled:cursor-not-allowed disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
+                                <button type="button" aria-label="Move image section down" title="Move down" disabled={index === draft.sections.length - 1} onClick={() => moveSection(index, 1)} className="rounded-md border p-1.5 disabled:cursor-not-allowed disabled:opacity-40"><ArrowDown className="h-4 w-4" /></button>
+                              </div>
+                            </div>
                             <div id={`field-section-title-${section.id}`} className="flex gap-2">
                               <Input
                                 aria-invalid={Boolean(fieldErrors[`section-title-${section.id}`])}
@@ -1199,9 +1287,16 @@ export function PetCareArticlesPage() {
                           key={`${section.id}-${index}`}
                           className="rounded-lg border border-[#DDEBE2] p-4"
                         >
-                          <p className="mb-2 text-xs font-bold uppercase text-[#60736B]">
-                            Section heading <span className="text-red-600" aria-hidden="true">*</span>
-                          </p>
+                          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-xs font-bold uppercase text-[#60736B]">
+                              Section heading <span className="text-red-600" aria-hidden="true">*</span>
+                            </p>
+                            <div className="flex items-center gap-1" aria-label={`Section position ${index + 1} of ${draft.sections.length}`}>
+                              <span className="mr-1 text-xs font-semibold text-[#60736B]">Position {index + 1}</span>
+                              <button type="button" aria-label="Move section up" title="Move up" disabled={index === 0} onClick={() => moveSection(index, -1)} className="rounded-md border p-1.5 disabled:cursor-not-allowed disabled:opacity-40"><ArrowUp className="h-4 w-4" /></button>
+                              <button type="button" aria-label="Move section down" title="Move down" disabled={index === draft.sections.length - 1} onClick={() => moveSection(index, 1)} className="rounded-md border p-1.5 disabled:cursor-not-allowed disabled:opacity-40"><ArrowDown className="h-4 w-4" /></button>
+                            </div>
+                          </div>
                           <div id={`field-section-title-${section.id}`} className="flex gap-2">
                             <Input
                               aria-invalid={Boolean(fieldErrors[`section-title-${section.id}`])}
@@ -1619,6 +1714,9 @@ export function PetCareArticlesPage() {
                         A registered veterinarian must approve this article
                         before staff can publish it.
                       </p>
+                      <Button type="button" variant="outline" className="mt-4" onClick={() => navigate("/pet-care/reviewers")}>
+                        <Users className="mr-2 h-4 w-4" /> Manage veterinarians
+                      </Button>
                       <Field
                         label="Assigned veterinarian"
                         required

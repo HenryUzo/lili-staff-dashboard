@@ -1,5 +1,5 @@
 import { api } from "@/api/http";
-import type { PetCareArticle, PetCareArticleInput, PetCarePublishingStatus, PetCareReviewer } from "@/types/api";
+import type { PetCareArticle, PetCareArticleInput, PetCarePublishingStatus, PetCareReviewer, PetCareReviewerInput } from "@/types/api";
 
 export interface PetCareFilters {
   status?: PetCarePublishingStatus | "ALL";
@@ -48,6 +48,10 @@ export async function getPetCareReviewers() {
 
 export async function updatePetCareReviewer(id: string, input: Partial<PetCareReviewer>) {
   return (await api.patch<PetCareReviewer>(`/api/admin/pet-care/reviewers/${id}`, input)).data;
+}
+
+export async function createPetCareReviewer(input: PetCareReviewerInput) {
+  return (await api.post<PetCareReviewer>("/api/admin/pet-care/reviewers", input)).data;
 }
 
 export async function sendPetCareReviewInvitation(id: string) {
