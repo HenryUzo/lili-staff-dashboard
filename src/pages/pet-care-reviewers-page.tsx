@@ -82,6 +82,15 @@ export function PetCareReviewersPage() {
     },
     onError: (error) => toast.error(getErrorMessage(error, "Could not save veterinarian")),
   });
+  const removeMutation = useMutation({
+    mutationFn: (id: string) => updatePetCareReviewer(id, { isActive: false }),
+    onSuccess: async () => {
+      toast.success("Veterinarian removed from future reviews");
+      await queryClient.invalidateQueries({ queryKey: ["pet-care-reviewers"] });
+      startNew();
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Could not remove veterinarian")),
+  });
   const imageUploadMutation = useMutation({
     mutationFn: uploadPetCareHeroImage,
     onSuccess: (image) => {
@@ -241,6 +250,21 @@ export function PetCareReviewersPage() {
 
           <div className="mt-6 flex flex-wrap justify-end gap-3 border-t border-[#E5EEE8] pt-5">
             {selectedId ? <Button variant="outline" onClick={startNew}>Cancel editing</Button> : null}
+            {selectedId && selected?.isActive ? (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={removeMutation.isPending}
+                onClick={() => {
+                  if (window.confirm(`Remove ${selected.name} from future article reviews? Existing article attribution will remain.`)) {
+                    removeMutation.mutate(selectedId);
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                {removeMutation.isPending ? "Removing..." : "Remove veterinarian"}
+              </Button>
+            ) : null}
             <Button onClick={save} disabled={saveMutation.isPending}><Stethoscope className="h-4 w-4" /> {saveMutation.isPending ? "Saving..." : selectedId ? "Save changes" : "Add veterinarian"}</Button>
           </div>
         </section>
