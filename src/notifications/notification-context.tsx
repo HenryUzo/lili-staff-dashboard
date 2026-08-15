@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { getAppointmentRequests } from "@/api/appointments";
 import { getNewPatientRequests } from "@/api/new-patients";
 import { useAuth } from "@/auth/auth-context";
+import { hasPermission } from "@/lib/permissions";
 import {
   createEmptyNotificationStore,
   getStoredNotificationStore,
@@ -118,7 +119,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const appointmentWatchQuery = useQuery({
     queryKey: ["notification-watch", "appointments"],
     queryFn: () => getAppointmentRequests({ limit: WATCH_LIMIT }),
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && hasPermission(user, "APPOINTMENTS_VIEW"),
     staleTime: 0,
     refetchInterval: POLL_INTERVAL_MS,
     refetchIntervalInBackground: true
@@ -127,7 +128,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const newPatientWatchQuery = useQuery({
     queryKey: ["notification-watch", "new-patients"],
     queryFn: () => getNewPatientRequests({ limit: WATCH_LIMIT }),
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && hasPermission(user, "NEW_PATIENTS_VIEW"),
     staleTime: 0,
     refetchInterval: POLL_INTERVAL_MS,
     refetchIntervalInBackground: true

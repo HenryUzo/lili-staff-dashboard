@@ -1,18 +1,21 @@
 import { useEffect, useState } from "react";
-import { BookOpenText, ChevronDown, ClipboardList, LayoutDashboard, PawPrint, ShieldCheck, Stethoscope } from "lucide-react";
+import { BookOpenText, ChevronDown, ClipboardList, LayoutDashboard, PawPrint, ShieldCheck, Stethoscope, UsersRound } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import careOperationsHeartline from "@/assets/illustrations/care-operations-heartline.png";
 import dogCatSidebarIllustration from "@/assets/illustrations/dog-cat-sidebar-illustration.png";
 import liliLogo from "@/assets/illustrations/lili-veterinary-hospital-logo.svg";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/auth/auth-context";
+import { hasPermission, isSuperAdmin } from "@/lib/permissions";
 
 const navItems = [
-  { to: "/", label: "Overview", icon: LayoutDashboard, end: true },
-  { to: "/appointments", label: "Appointment Requests", icon: ClipboardList },
-  { to: "/new-patients", label: "New Patient Requests", icon: PawPrint },
-  { to: "/pet-care", label: "Pet Care Library", icon: BookOpenText, exclude: "/pet-care/reviewers" },
-  { to: "/pet-care/reviewers", label: "Veterinarians", icon: Stethoscope }
+  { to: "/overview", label: "Overview", icon: LayoutDashboard, end: true, superAdminOnly: true },
+  { to: "/appointments", label: "Appointment Requests", icon: ClipboardList, permission: "APPOINTMENTS_VIEW" as const },
+  { to: "/new-patients", label: "New Patient Requests", icon: PawPrint, permission: "NEW_PATIENTS_VIEW" as const },
+  { to: "/pet-care", label: "Pet Care Library", icon: BookOpenText, exclude: "/pet-care/reviewers", permission: "PET_CARE_VIEW" as const },
+  { to: "/pet-care/reviewers", label: "Veterinarians", icon: Stethoscope, permission: "PET_CARE_REVIEWERS" as const },
+  { to: "/team", label: "Team & Access", icon: UsersRound, superAdminOnly: true }
 ];
 
 const brandGuideItems = [
@@ -32,6 +35,7 @@ interface MobileSidebarProps {
 }
 
 function SidebarContent({ onNavigate }: SidebarContentProps) {
+  const { user } = useAuth();
   const location = useLocation();
   const isBrandGuideRoute = location.pathname.startsWith("/brand-guide");
   const [isBrandGuideExpanded, setIsBrandGuideExpanded] = useState(isBrandGuideRoute);
@@ -66,7 +70,7 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
       </div>
 
       <nav className="space-y-3">
-        {navItems.map((item) => (
+        {navItems.filter((item) => item.superAdminOnly ? isSuperAdmin(user) : !item.permission || hasPermission(user, item.permission)).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

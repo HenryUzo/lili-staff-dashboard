@@ -7,12 +7,21 @@ import { AppointmentRequestsPage } from "@/pages/appointment-requests-page";
 import { PhotoshootGuidelinesPage } from "@/pages/photoshoot-guidelines-page";
 import { PetCareArticlesPage } from "@/pages/pet-care-articles-page";
 import { PetCareReviewersPage } from "@/pages/pet-care-reviewers-page";
+import { TeamAccessPage } from "@/pages/team-access-page";
+import { ForbiddenPage } from "@/pages/forbidden-page";
+import { AcceptStaffInvitationPage } from "@/pages/accept-staff-invitation-page";
+import { DashboardHomePage } from "@/pages/dashboard-home-page";
 import { ProtectedRoute } from "@/routes/protected-route";
+import { PermissionRoute } from "@/routes/permission-route";
 
 export const appRouter = createBrowserRouter([
   {
     path: "/login",
     element: <LoginPage />
+  },
+  {
+    path: "/accept-invitation",
+    element: <AcceptStaffInvitationPage />
   },
   {
     element: <ProtectedRoute />,
@@ -22,39 +31,46 @@ export const appRouter = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <OverviewPage />
+            element: <DashboardHomePage />
           },
           {
-            path: "appointments",
-            element: <AppointmentRequestsPage />
+            path: "overview",
+            element: <PermissionRoute superAdminOnly />,
+            children: [{ index: true, element: <OverviewPage /> }]
           },
           {
-            path: "appointments/:appointmentId",
-            element: <AppointmentRequestsPage />
+            element: <PermissionRoute permission="APPOINTMENTS_VIEW" />,
+            children: [
+              { path: "appointments", element: <AppointmentRequestsPage /> },
+              { path: "appointments/:appointmentId", element: <AppointmentRequestsPage /> }
+            ]
           },
           {
-            path: "new-patients",
-            element: <NewPatientRequestsPage />
+            element: <PermissionRoute permission="NEW_PATIENTS_VIEW" />,
+            children: [
+              { path: "new-patients", element: <NewPatientRequestsPage /> },
+              { path: "new-patients/:requestId", element: <NewPatientRequestsPage /> }
+            ]
           },
           {
-            path: "new-patients/:requestId",
-            element: <NewPatientRequestsPage />
+            element: <PermissionRoute permission="PET_CARE_VIEW" />,
+            children: [
+              { path: "pet-care", element: <PetCareArticlesPage /> },
+              { path: "pet-care/new", element: <PetCareArticlesPage /> },
+              { path: "pet-care/:articleId", element: <PetCareArticlesPage /> }
+            ]
           },
           {
-            path: "pet-care",
-            element: <PetCareArticlesPage />
+            element: <PermissionRoute permission="PET_CARE_REVIEWERS" />,
+            children: [{ path: "pet-care/reviewers", element: <PetCareReviewersPage /> }]
           },
           {
-            path: "pet-care/new",
-            element: <PetCareArticlesPage />
+            element: <PermissionRoute superAdminOnly />,
+            children: [{ path: "team", element: <TeamAccessPage /> }]
           },
           {
-            path: "pet-care/reviewers",
-            element: <PetCareReviewersPage />
-          },
-          {
-            path: "pet-care/:articleId",
-            element: <PetCareArticlesPage />
+            path: "forbidden",
+            element: <ForbiddenPage />
           },
           {
             path: "brand-guide/photoshoot-guidelines",

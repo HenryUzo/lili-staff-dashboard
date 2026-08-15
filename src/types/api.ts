@@ -1,4 +1,12 @@
-export type StaffRole = "ADMIN" | "STAFF";
+export type StaffRole = "SUPER_ADMIN" | "ADMIN" | "STAFF";
+export type PermissionKey =
+  | "APPOINTMENTS_VIEW"
+  | "APPOINTMENTS_MANAGE"
+  | "NEW_PATIENTS_VIEW"
+  | "PET_CARE_VIEW"
+  | "PET_CARE_EDIT"
+  | "PET_CARE_PUBLISH"
+  | "PET_CARE_REVIEWERS";
 export type PetCarePublishingStatus = "DRAFT" | "IN_REVIEW" | "APPROVED" | "PUBLISHED" | "ARCHIVED";
 export type PetCareReviewStatus = "NOT_REVIEWED" | "IN_REVIEW" | "MEDICALLY_REVIEWED";
 
@@ -124,6 +132,16 @@ export interface StaffUser {
   id: string;
   email: string;
   role: StaffRole;
+  permissions: PermissionKey[];
+}
+
+export interface ManagedStaffUser extends StaffUser {
+  isActive: boolean;
+  invitationStatus: "ACCEPTED" | "PENDING" | "NONE";
+  invitationExpiresAt: string | null;
+  invitationAcceptedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface StaffSession {
