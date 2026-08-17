@@ -5,5 +5,5 @@ export function isSuperAdmin(user: StaffUser | null | undefined) {
 }
 
 export function hasPermission(user: StaffUser | null | undefined, permission: PermissionKey) {
-  return isSuperAdmin(user) || Boolean(user?.permissions.includes(permission));
+  return isSuperAdmin(user) || Boolean(user && Array.isArray(user.permissions) && user.permissions.includes(permission));
 }
