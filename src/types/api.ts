@@ -6,7 +6,9 @@ export type PermissionKey =
   | "PET_CARE_VIEW"
   | "PET_CARE_EDIT"
   | "PET_CARE_PUBLISH"
-  | "PET_CARE_REVIEWERS";
+  | "PET_CARE_REVIEWERS"
+  | "CLIENTS_VIEW"
+  | "CLIENTS_MANAGE";
 export type PetCarePublishingStatus = "DRAFT" | "IN_REVIEW" | "APPROVED" | "PUBLISHED" | "ARCHIVED";
 export type PetCareReviewStatus = "NOT_REVIEWED" | "IN_REVIEW" | "MEDICALLY_REVIEWED";
 
@@ -125,7 +127,7 @@ export type VisitType =
   | "DIAGNOSTICS"
   | "NEW_PATIENT_VISIT"
   | "OTHER";
-export type PetSpecies = "DOG" | "CAT";
+export type PetSpecies = "DOG" | "CAT" | "UNKNOWN";
 export type PetSex = "MALE" | "FEMALE";
 
 export interface StaffUser {
@@ -147,6 +149,73 @@ export interface ManagedStaffUser extends StaffUser {
 export interface StaffSession {
   token: string;
   user: StaffUser;
+}
+
+export type MarketingConsentStatus = "NOT_SUBSCRIBED" | "SUBSCRIBED" | "UNSUBSCRIBED" | "SUPPRESSED";
+export interface ClientProfile {
+  emailMarketingStatus: MarketingConsentStatus;
+  smsMarketingStatus: MarketingConsentStatus;
+  emailConsentAt: string | null;
+  smsConsentAt: string | null;
+  emailConsentSource: string | null;
+  smsConsentSource: string | null;
+}
+export interface ClientLifecycleRecord {
+  id: string;
+  petId?: string;
+  pet?: { id: string; name: string; species: PetSpecies };
+  newClientDate: string;
+  leadSource: string | null;
+  referredBy: string | null;
+  regularVeterinarian: string | null;
+  firstVisitType: string | null;
+  doctorSeen: string | null;
+  recheckRecommended: boolean;
+  recheckScheduled: boolean;
+  recheckDate: string | null;
+  recheckCompleted: boolean;
+  followUpNeeded: boolean;
+  firstVisitRevenue: string | null;
+  additionalServicesRevenue: string | null;
+  wellnessPlan: string | null;
+  clientStatus: "ACTIVE" | "INACTIVE" | "DECEASED";
+  lastVisitAt: string | null;
+  nextAppointmentAt: string | null;
+  notes: string | null;
+}
+export interface ClientDirectoryItem {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phoneNumber: string;
+  pets: Array<{ id: string; name: string; species: PetSpecies }>;
+  clientProfile: ClientProfile | null;
+  clientLifecycleRecords: ClientLifecycleRecord[];
+  createdAt: string;
+  updatedAt: string;
+}
+export interface ClientDetail extends Omit<ClientDirectoryItem, "clientLifecycleRecords"> {
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  contactMethods: Array<{ id: string; channel: "PHONE" | "EMAIL"; label: string | null; value: string; isPrimary: boolean; source: "WEAVE" | "LILI_WEB" | "MANUAL" | null }>;
+  externalClientRecords: Array<{ id: string; source: "WEAVE" | "LILI_WEB" | "MANUAL"; externalContactId: string | null; externalPetId: string | null; contactStatus: string | null; lastSyncedAt: string }>;
+  clientLifecycleRecords: Array<ClientLifecycleRecord & { pet: { id: string; name: string; species: PetSpecies; breed: string | null; sex: "MALE" | "FEMALE" | "UNKNOWN"; age: string | null; spayedNeutered: boolean | null } }>;
+}
+export interface ClientImportRun {
+  id: string;
+  originalFileName: string;
+  sourceLabel: string;
+  totalRows: number;
+  importedCount: number;
+  updatedCount: number;
+  skippedCount: number;
+  skippedRows: Array<{ row: number; reason: string }> | null;
+  createdAt: string;
+  initiatedBy: { email: string } | null;
 }
 
 export interface ApiErrorPayload {

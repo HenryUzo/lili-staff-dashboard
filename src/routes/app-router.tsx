@@ -11,6 +11,8 @@ import { TeamAccessPage } from "@/pages/team-access-page";
 import { ForbiddenPage } from "@/pages/forbidden-page";
 import { AcceptStaffInvitationPage } from "@/pages/accept-staff-invitation-page";
 import { DashboardHomePage } from "@/pages/dashboard-home-page";
+import { ClientsPage } from "@/pages/clients-page";
+import { ClientDetailPage } from "@/pages/client-detail-page";
 import { ProtectedRoute } from "@/routes/protected-route";
 import { PermissionRoute } from "@/routes/permission-route";
 
@@ -51,6 +53,10 @@ export const appRouter = createBrowserRouter([
               { path: "new-patients", element: <NewPatientRequestsPage /> },
               { path: "new-patients/:requestId", element: <NewPatientRequestsPage /> }
             ]
+          },
+          {
+            element: <PermissionRoute permission="CLIENTS_VIEW" />,
+            children: [{ path: "clients", element: <ClientsPage /> }, { path: "clients/:ownerId", element: <ClientDetailPage /> }]
           },
           {
             element: <PermissionRoute permission="PET_CARE_VIEW" />,

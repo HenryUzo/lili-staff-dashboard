@@ -12,6 +12,7 @@ const permissionGroups: Array<{ title: string; description: string; keys: Array<
   { title: "Appointment requests", description: "View incoming requests or manage scheduling and statuses.", keys: [{ key: "APPOINTMENTS_VIEW", label: "View requests" }, { key: "APPOINTMENTS_MANAGE", label: "Manage requests" }] },
   { title: "New patient requests", description: "View new-patient intake records.", keys: [{ key: "NEW_PATIENTS_VIEW", label: "View requests" }] },
   { title: "Pet Care Library", description: "Read, write, publish, or manage veterinary reviewers.", keys: [{ key: "PET_CARE_VIEW", label: "View library" }, { key: "PET_CARE_EDIT", label: "Edit articles" }, { key: "PET_CARE_PUBLISH", label: "Publish and archive" }, { key: "PET_CARE_REVIEWERS", label: "Manage veterinarians" }] }
+  ,{ title: "Clients", description: "View the consent-aware client directory. Promotional sending is a future permission.", keys: [{ key: "CLIENTS_VIEW", label: "View clients" }, { key: "CLIENTS_MANAGE", label: "Manage client preferences" }] }
 ];
 
 function PermissionEditor({ value, onChange }: { value: PermissionKey[]; onChange: (permissions: PermissionKey[]) => void }) {
