@@ -1,13 +1,12 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { loginStaff } from "@/api/auth";
+import { getStaffSession, loginStaff, logoutStaff } from "@/api/auth";
 import { setUnauthorizedHandler } from "@/api/http";
-import { clearStoredSession, getStoredSession, setStoredSession } from "@/lib/storage";
 import type { StaffLoginResult, StaffSession, StaffUser } from "@/types/api";
 
 interface AuthContextValue {
   isAuthenticated: boolean;
+  isRestoring: boolean;
   isLoggingIn: boolean;
-  token: string | null;
   user: StaffUser | null;
   login: (email: string, password: string) => Promise<StaffLoginResult>;
   completeLogin: (session: StaffSession) => void;
@@ -17,8 +16,9 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [session, setSession] = useState<StaffSession | null>(() => getStoredSession());
+  const [session, setSession] = useState<StaffSession | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(true);
 
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -30,18 +30,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, []);
 
+  useEffect(() => {
+    getStaffSession().then(setSession).catch(() => setSession(null)).finally(() => setIsRestoring(false));
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
-      isAuthenticated: Boolean(session?.token),
+      isAuthenticated: Boolean(session),
+      isRestoring,
       isLoggingIn,
-      token: session?.token ?? null,
       user: session?.user ?? null,
       async login(email, password) {
         setIsLoggingIn(true);
         try {
           const nextSession = await loginStaff(email, password);
-          if ("token" in nextSession) {
-            setStoredSession(nextSession);
+          if ("user" in nextSession) {
             setSession(nextSession);
           }
           return nextSession;
@@ -50,16 +53,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       },
       completeLogin(nextSession) {
-        setStoredSession(nextSession);
         setSession(nextSession);
       },
       logout() {
-        clearStoredSession();
+        void logoutStaff().catch(() => undefined);
         setSession(null);
         window.location.replace("/login");
       }
     }),
-    [isLoggingIn, session]
+    [isLoggingIn, isRestoring, session]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

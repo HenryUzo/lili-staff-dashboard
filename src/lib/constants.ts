@@ -1,8 +1,8 @@
 import type { AppointmentRequestStatus } from "@/types/api";
 
 const defaultApiBaseUrl = import.meta.env.DEV
-  ? "http://127.0.0.1:4000"
-  : "https://lilivet.onrender.com";
+  ? "http://localhost:4000"
+  : "";
 
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, "") ?? defaultApiBaseUrl;

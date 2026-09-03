@@ -1,31 +1,22 @@
 import axios from "axios";
 import type { AxiosError } from "axios";
 import { API_BASE_URL } from "@/lib/constants";
-import { clearStoredSession, getStoredSession } from "@/lib/storage";
 import type { ApiErrorPayload } from "@/types/api";
 
 let unauthorizedHandler: (() => void) | null = null;
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json"
   }
 });
 
-api.interceptors.request.use((config) => {
-  const session = getStoredSession();
-  if (session?.token) {
-    config.headers.Authorization = `Bearer ${session.token}`;
-  }
-  return config;
-});
-
 api.interceptors.response.use(
   (response) => response,
   (error: AxiosError<ApiErrorPayload>) => {
-    if (error.response?.status === 401) {
-      clearStoredSession();
+    if (error.response?.status === 401 && !error.config?.url?.startsWith("/api/staff/auth/")) {
       unauthorizedHandler?.();
     }
     return Promise.reject(error);

@@ -147,7 +147,6 @@ export interface ManagedStaffUser extends StaffUser {
 }
 
 export interface StaffSession {
-  token: string;
   user: StaffUser;
 }
 

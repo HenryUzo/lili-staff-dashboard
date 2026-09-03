@@ -1,4 +1,10 @@
 {
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://lilivet.onrender.com/api/:path*"
+    }
+  ],
   "routes": [
     {
       "handle": "filesystem"
