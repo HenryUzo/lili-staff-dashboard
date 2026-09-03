@@ -15,6 +15,12 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function isStaffSession(value: unknown): value is StaffSession {
+  if (!value || typeof value !== "object" || !("user" in value)) return false;
+  const user = value.user;
+  return Boolean(user && typeof user === "object" && "id" in user && "email" in user && "permissions" in user);
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<StaffSession | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -31,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    getStaffSession().then(setSession).catch(() => setSession(null)).finally(() => setIsRestoring(false));
+    getStaffSession().then((nextSession) => setSession(isStaffSession(nextSession) ? nextSession : null)).catch(() => setSession(null)).finally(() => setIsRestoring(false));
   }, []);
 
   const value = useMemo<AuthContextValue>(
