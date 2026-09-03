@@ -1,0 +1,24 @@
+import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { getClient } from "@/api/clients";
+import { getErrorMessage } from "@/api/http";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+
+export function ClientDetailsDrawer({ ownerId, open, onOpenChange }: { ownerId: string | null; open: boolean; onOpenChange: (open: boolean) => void }) {
+  const clientQuery = useQuery({ queryKey: ["client", ownerId], queryFn: () => getClient(ownerId!), enabled: open && Boolean(ownerId) });
+  const client = clientQuery.data;
+
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="w-[min(780px,calc(100vw-24px))] rounded-[20px] p-0" aria-describedby="client-details-description"><DialogHeader className="shrink-0 border-b border-[#E5EEE8] px-6 py-5 pr-14"><p className="text-xs font-bold uppercase tracking-[0.16em] text-[#087C48]">Client profile</p><DialogTitle className="mt-2 text-2xl font-extrabold text-[#102E24]">{client ? `${client.firstName} ${client.lastName}` : "Client details"}</DialogTitle><DialogDescription id="client-details-description" className="mt-2 text-sm text-[#60736B]">Contact information, pets, lifecycle, and source records.</DialogDescription></DialogHeader><div className="min-h-0 flex-1 overflow-y-auto px-6 py-6">{clientQuery.isLoading ? <div className="flex items-center gap-3 py-10 text-sm text-[#60736B]"><Loader2 className="h-4 w-4 animate-spin" />Loading client details...</div> : clientQuery.isError ? <p className="py-10 text-sm font-semibold text-red-700">Could not load this client: {getErrorMessage(clientQuery.error, "Please try again.")}</p> : client ? <div className="space-y-6"><section className="grid gap-5 sm:grid-cols-2"><Detail label="Email" value={client.email || "Not recorded"} /><Detail label="Primary phone" value={client.phoneNumber || "Not recorded"} /><Detail label="Address" value={[client.addressLine1, client.addressLine2, [client.city, client.state, client.postalCode].filter(Boolean).join(", ")].filter(Boolean).join(" · ") || "No address recorded"} /><Detail label="Email marketing" value={formatStatus(client.clientProfile?.emailMarketingStatus)} /><Detail label="SMS marketing" value={formatStatus(client.clientProfile?.smsMarketingStatus)} /></section><section className="border-t border-[#E5EEE8] pt-6"><h3 className="text-base font-extrabold text-[#102E24]">Pets and lifecycle</h3><div className="mt-4 space-y-4">{client.clientLifecycleRecords.map((record) => <article key={record.id} className="border border-[#DDEBE2] bg-[#FBFDFC] p-5"><h4 className="text-lg font-extrabold text-[#102E24]">{record.pet.name}</h4><p className="mt-1 text-sm text-[#60736B]">{record.pet.species} · {record.pet.breed || "Breed not recorded"} · {record.pet.sex} · {record.pet.age || "Age not recorded"}</p><div className="mt-5 grid gap-4 sm:grid-cols-2"><Detail label="Lead source" value={record.leadSource || "Not recorded"} /><Detail label="Doctor seen" value={record.doctorSeen || "Not recorded"} /><Detail label="Last visit" value={formatDate(record.lastVisitAt)} /><Detail label="Next appointment" value={formatDate(record.nextAppointmentAt)} /><Detail label="Wellness plan" value={record.wellnessPlan || "Not recorded"} /><Detail label="Follow-up" value={record.followUpNeeded ? "Needed" : "Not needed"} /></div>{record.notes ? <div className="mt-5 border-t border-[#E5EEE8] pt-4"><Detail label="Notes" value={record.notes} /></div> : null}</article>)}</div></section><section className="border-t border-[#E5EEE8] pt-6"><h3 className="text-base font-extrabold text-[#102E24]">External source records</h3><div className="mt-4 space-y-3">{client.externalClientRecords.length ? client.externalClientRecords.map((record) => <div key={record.id} className="border border-[#DDEBE2] p-4 text-sm text-[#60736B]"><span className="font-bold text-[#102E24]">{record.source}</span> · Contact status: {record.contactStatus || "Not provided"}<br />Contact ID: {record.externalContactId || "Not provided"} · Pet ID: {record.externalPetId || "Not provided"}</div>) : <p className="text-sm text-[#60736B]">No external source record has been imported.</p>}</div></section></div> : null}</div></DialogContent></Dialog>;
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return <div><p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#789087]">{label}</p><p className="mt-1 text-sm font-semibold leading-6 text-[#102E24]">{value}</p></div>;
+}
+
+function formatDate(value: string | null) {
+  return value ? new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(new Date(value)) : "Not recorded";
+}
+
+function formatStatus(value: string | undefined) {
+  return value ? value.split("_").join(" ") : "Not recorded";
+}

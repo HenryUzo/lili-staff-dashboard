@@ -2,14 +2,15 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { loginStaff } from "@/api/auth";
 import { setUnauthorizedHandler } from "@/api/http";
 import { clearStoredSession, getStoredSession, setStoredSession } from "@/lib/storage";
-import type { StaffSession, StaffUser } from "@/types/api";
+import type { StaffLoginResult, StaffSession, StaffUser } from "@/types/api";
 
 interface AuthContextValue {
   isAuthenticated: boolean;
   isLoggingIn: boolean;
   token: string | null;
   user: StaffUser | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<StaffLoginResult>;
+  completeLogin: (session: StaffSession) => void;
   logout: () => void;
 }
 
@@ -39,11 +40,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsLoggingIn(true);
         try {
           const nextSession = await loginStaff(email, password);
-          setStoredSession(nextSession);
-          setSession(nextSession);
+          if ("token" in nextSession) {
+            setStoredSession(nextSession);
+            setSession(nextSession);
+          }
+          return nextSession;
         } finally {
           setIsLoggingIn(false);
         }
+      },
+      completeLogin(nextSession) {
+        setStoredSession(nextSession);
+        setSession(nextSession);
       },
       logout() {
         clearStoredSession();

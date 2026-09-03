@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
+  Copy,
   Eye,
   EyeOff,
   FileText,
@@ -7,16 +8,19 @@ import {
   Mail,
   PawPrint,
   ShieldCheck,
+  Smartphone,
   Users
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/api/http";
+import { confirmMfaEnrollment, startMfaEnrollment, verifyMfaChallenge } from "@/api/auth";
 import { useAuth } from "@/auth/auth-context";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import liliVeterinaryHospitalLogo from "@/assets/illustrations/lili-veterinary-hospital-logo.svg";
+import type { StaffMfaEnrollmentResult, StaffMfaSetup } from "@/types/api";
 
 const supportEmail = "support@liliveterinaryhospital.com";
 
@@ -72,11 +76,17 @@ function LoginInput({
 export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isLoggingIn, isAuthenticated } = useAuth();
+  const { login, completeLogin, isLoggingIn, isAuthenticated } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [mfaStep, setMfaStep] = useState<"password" | "verify" | "setup" | "recovery">("password");
+  const [mfaToken, setMfaToken] = useState<string | null>(null);
+  const [mfaSetup, setMfaSetup] = useState<StaffMfaSetup | null>(null);
+  const [mfaResult, setMfaResult] = useState<StaffMfaEnrollmentResult | null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [isMfaSubmitting, setIsMfaSubmitting] = useState(false);
 
   const destination = (location.state as { from?: string } | null)?.from ?? "/";
   const sessionExpired = new URLSearchParams(location.search).get("reason") === "session-expired";
@@ -91,12 +101,60 @@ export function LoginPage() {
     event.preventDefault();
 
     try {
-      await login(email, password);
+      const result = await login(email, password);
+      if ("mfaRequired" in result) {
+        setMfaToken(result.challengeToken);
+        setMfaStep("verify");
+        return;
+      }
+      if ("mfaEnrollmentRequired" in result) {
+        setMfaToken(result.setupToken);
+        setIsMfaSubmitting(true);
+        try {
+          setMfaSetup(await startMfaEnrollment(result.setupToken));
+          setMfaStep("setup");
+        } finally {
+          setIsMfaSubmitting(false);
+        }
+        return;
+      }
       toast.success("Signed in successfully");
       navigate(destination, { replace: true });
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to sign in"));
     }
+  }
+
+  async function handleMfaVerification() {
+    if (!mfaToken) return;
+    setIsMfaSubmitting(true);
+    try {
+      const session = await verifyMfaChallenge(mfaToken, mfaCode);
+      completeLogin(session);
+      toast.success("Signed in securely");
+      navigate(destination, { replace: true });
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to verify the authentication code"));
+    } finally {
+      setIsMfaSubmitting(false);
+    }
+  }
+
+  async function handleMfaEnrollment() {
+    if (!mfaToken) return;
+    setIsMfaSubmitting(true);
+    try {
+      setMfaResult(await confirmMfaEnrollment(mfaToken, mfaCode));
+      setMfaStep("recovery");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to verify the authentication code"));
+    } finally {
+      setIsMfaSubmitting(false);
+    }
+  }
+
+  if (mfaStep !== "password") {
+    return <MfaPage step={mfaStep} setup={mfaSetup} result={mfaResult} code={mfaCode} onCodeChange={setMfaCode} isSubmitting={isMfaSubmitting} onVerify={handleMfaVerification} onEnroll={handleMfaEnrollment} onFinish={() => { if (mfaResult) { completeLogin(mfaResult.session); navigate(destination, { replace: true }); } }} onBack={() => { setMfaStep("password"); setMfaToken(null); setMfaCode(""); }} />;
   }
 
   return (
@@ -232,4 +290,29 @@ export function LoginPage() {
       </div>
     </main>
   );
+}
+
+function MfaPage({ step, setup, result, code, onCodeChange, isSubmitting, onVerify, onEnroll, onFinish, onBack }: {
+  step: "verify" | "setup" | "recovery";
+  setup: StaffMfaSetup | null;
+  result: StaffMfaEnrollmentResult | null;
+  code: string;
+  onCodeChange: (value: string) => void;
+  isSubmitting: boolean;
+  onVerify: () => void;
+  onEnroll: () => void;
+  onFinish: () => void;
+  onBack: () => void;
+}) {
+  const canSubmit = /^\d{6}$/.test(code);
+  return <main className="min-h-screen bg-[#F4FAF5] px-4 py-8 text-[#12372A]"><div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-lg items-center"><section className="w-full rounded-[28px] border border-[#DDE8DF] bg-white p-6 shadow-[0_20px_60px_rgba(6,77,46,0.08)] sm:p-9">
+    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#EAF7F0] text-[#087C48]"><Smartphone className="h-6 w-6" /></div>
+    {step === "verify" ? <><h1 className="mt-6 text-3xl font-semibold">Verify your sign-in</h1><p className="mt-3 leading-7 text-[#667A70]">Enter the six-digit code from your authenticator app. You can also use an unused recovery code.</p><MfaCodeInput value={code} onChange={onCodeChange} /><Button className="mt-6 w-full" disabled={isSubmitting || !code.trim()} onClick={onVerify}>{isSubmitting ? "Verifying..." : "Verify and sign in"}</Button><button className="mt-5 w-full text-sm font-semibold text-[#064D2E] underline" onClick={onBack}>Use a different account</button></> : null}
+    {step === "setup" ? <><h1 className="mt-6 text-3xl font-semibold">Set up your authenticator</h1><p className="mt-3 leading-7 text-[#667A70]">Scan this QR code with an authenticator app, then enter the current six-digit code to secure your account.</p>{setup ? <div className="mt-6 rounded-2xl border border-[#DDE8DF] bg-[#FBFDFC] p-4 text-center"><img className="mx-auto h-52 w-52" src={setup.qrCodeDataUrl} alt="Authenticator setup QR code" /><p className="mt-3 text-xs font-bold uppercase tracking-wide text-[#60736B]">Manual setup key</p><code className="mt-2 block break-all rounded-lg bg-white p-3 text-xs text-[#102E24]">{setup.secret}</code></div> : <p className="mt-6 text-sm text-[#60736B]">Preparing your secure setup code...</p>}<MfaCodeInput value={code} onChange={onCodeChange} /><Button className="mt-6 w-full" disabled={isSubmitting || !canSubmit || !setup} onClick={onEnroll}>{isSubmitting ? "Verifying..." : "Enable authenticator MFA"}</Button></> : null}
+    {step === "recovery" ? <><h1 className="mt-6 text-3xl font-semibold">Save your recovery codes</h1><p className="mt-3 leading-7 text-[#667A70]">Keep these one-time codes somewhere secure. Each can be used once if you lose your authenticator device. They will not be shown again.</p><div className="mt-6 grid grid-cols-2 gap-2 rounded-2xl border border-[#DDE8DF] bg-[#FBFDFC] p-4">{result?.recoveryCodes.map((recoveryCode) => <code key={recoveryCode} className="rounded bg-white px-2 py-2 text-center text-sm font-bold text-[#102E24]">{recoveryCode}</code>)}</div><Button className="mt-6 w-full" onClick={onFinish}><Copy className="h-4 w-4" />I saved my recovery codes</Button></> : null}
+  </section></div></main>;
+}
+
+function MfaCodeInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return <div className="mt-6"><label className="mb-2 block text-sm font-semibold text-[#12372A]">Authenticator code</label><Input autoComplete="one-time-code" inputMode="numeric" maxLength={16} value={value} onChange={(event) => onChange(event.target.value.replace(/\s/g, ""))} placeholder="123456 or recovery code" className="h-[52px] text-center text-lg font-bold tracking-[0.2em]" /></div>;
 }

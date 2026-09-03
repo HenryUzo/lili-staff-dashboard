@@ -151,6 +151,17 @@ export interface StaffSession {
   user: StaffUser;
 }
 
+export type StaffLoginResult = StaffSession | { mfaRequired: true; challengeToken: string } | { mfaEnrollmentRequired: true; setupToken: string };
+export interface StaffMfaSetup {
+  secret: string;
+  otpauthUri: string;
+  qrCodeDataUrl: string;
+}
+export interface StaffMfaEnrollmentResult {
+  session: StaffSession;
+  recoveryCodes: string[];
+}
+
 export type MarketingConsentStatus = "NOT_SUBSCRIBED" | "SUBSCRIBED" | "UNSUBSCRIBED" | "SUPPRESSED";
 export interface ClientProfile {
   emailMarketingStatus: MarketingConsentStatus;
