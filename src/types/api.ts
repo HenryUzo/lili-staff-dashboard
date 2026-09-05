@@ -8,7 +8,37 @@ export type PermissionKey =
   | "PET_CARE_PUBLISH"
   | "PET_CARE_REVIEWERS"
   | "CLIENTS_VIEW"
-  | "CLIENTS_MANAGE";
+  | "CLIENTS_MANAGE"
+  | "CAMPAIGNS_VIEW"
+  | "CAMPAIGNS_MANAGE";
+
+export type MarketingCampaignStatus = "DRAFT" | "READY_TO_SEND" | "SENDING" | "SENT" | "FAILED";
+export type MarketingContentBlockType = "TITLE" | "TEXT" | "IMAGE" | "BUTTON" | "DIVIDER" | "LOGO" | "SOCIAL" | "SPACER";
+export interface MarketingContentBlock { id: string; type: MarketingContentBlockType; text?: string; url?: string; alt?: string; align?: "left" | "center" | "right"; }
+export interface MarketingEmailTemplate { id: string; name: string; contentBlocks: MarketingContentBlock[]; htmlContent?: string; textContent?: string; }
+export interface MarketingCampaign {
+  id: string;
+  name: string;
+  subject: string;
+  previewText: string | null;
+  htmlContent: string;
+  textContent: string;
+  senderName: string;
+  senderEmail: string;
+  senderAddress: string;
+  audienceMode: "CONSENTED_CLIENTS" | "SELECTED_EMAILS";
+  customAudience: string[] | null;
+  contentBlocks: MarketingContentBlock[] | null;
+  templateId: string | null;
+  recipientSelectionConfirmed: boolean;
+  designConfigured: boolean;
+  status: MarketingCampaignStatus;
+  audienceCount: number;
+  sentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { deliveries: number };
+}
 export type PetCarePublishingStatus = "DRAFT" | "IN_REVIEW" | "APPROVED" | "PUBLISHED" | "ARCHIVED";
 export type PetCareReviewStatus = "NOT_REVIEWED" | "IN_REVIEW" | "MEDICALLY_REVIEWED";
 

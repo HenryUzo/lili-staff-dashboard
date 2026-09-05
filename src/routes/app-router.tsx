@@ -13,6 +13,8 @@ import { AcceptStaffInvitationPage } from "@/pages/accept-staff-invitation-page"
 import { DashboardHomePage } from "@/pages/dashboard-home-page";
 import { ClientsPage } from "@/pages/clients-page";
 import { ClientDetailPage } from "@/pages/client-detail-page";
+import { MarketingCampaignWorkspacePage } from "@/pages/marketing-campaign-workspace-page";
+import { MarketingCampaignsLandingPage } from "@/pages/marketing-campaigns-landing-page";
 import { ProtectedRoute } from "@/routes/protected-route";
 import { PermissionRoute } from "@/routes/permission-route";
 
@@ -73,6 +75,14 @@ export const appRouter = createBrowserRouter([
           {
             element: <PermissionRoute superAdminOnly />,
             children: [{ path: "team", element: <TeamAccessPage /> }]
+          },
+          {
+            element: <PermissionRoute superAdminOnly />,
+            children: [
+              { path: "campaigns", element: <MarketingCampaignsLandingPage /> },
+              { path: "campaigns/new", element: <MarketingCampaignWorkspacePage /> },
+              { path: "campaigns/:campaignId", element: <MarketingCampaignWorkspacePage /> }
+            ]
           },
           {
             path: "forbidden",
