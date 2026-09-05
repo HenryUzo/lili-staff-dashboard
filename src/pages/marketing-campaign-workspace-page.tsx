@@ -33,16 +33,17 @@ export function MarketingCampaignWorkspacePage() {
   const [dialog, setDialog] = useState<"create" | "sender" | "recipients" | "subject" | "design" | "settings" | "preview" | null>(null);
   const [testEmail, setTestEmail] = useState(user?.email ?? "");
   const [sendConfirmed, setSendConfirmed] = useState(false);
+  const isNewCampaign = !campaignId;
   const selected = useMemo(() => campaigns.data?.find((campaign) => campaign.id === campaignId) ?? null, [campaigns.data, campaignId]);
   const canManage = isSuperAdmin(user);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["marketing-campaigns"] });
   const persist = useMutation({ mutationFn: () => selected ? updateMarketingCampaign(selected.id, form) : createMarketingCampaign(form), onSuccess: (campaign) => { setSendConfirmed(false); refresh(); navigate(`/campaigns/${campaign.id}`, { replace: true }); toast.success("Campaign draft saved."); }, onError: (error) => toast.error(getErrorMessage(error, "Could not save campaign.")) });
   const test = useMutation({ mutationFn: () => selected ? sendMarketingCampaignTest(selected.id, testEmail) : Promise.reject(new Error("Save the campaign first.")), onSuccess: () => toast.success("Test email sent."), onError: (error) => toast.error(getErrorMessage(error, "Could not send test email.")) });
   const send = useMutation({ mutationFn: () => selected ? sendMarketingCampaign(selected.id) : Promise.reject(new Error("Save the campaign first.")), onSuccess: () => { setSendConfirmed(false); refresh(); toast.success("Campaign sent to Brevo for delivery."); }, onError: (error) => toast.error(getErrorMessage(error, "Campaign could not be sent.")) });
-  useEffect(() => { if (selected) setForm({ name: selected.name, subject: selected.subject, previewText: selected.previewText ?? "", htmlContent: selected.htmlContent, textContent: selected.textContent, contentBlocks: selected.contentBlocks ?? [], templateId: selected.templateId, recipientSelectionConfirmed: selected.recipientSelectionConfirmed, designConfigured: selected.designConfigured, audienceMode: selected.audienceMode, recipientEmails: selected.customAudience ?? [] }); else if (campaignId === "new") setForm((current) => current.name ? current : emptyCampaign(searchParams.get("name") ?? "")); }, [selected, campaignId, searchParams]);
+  useEffect(() => { if (selected) setForm({ name: selected.name, subject: selected.subject, previewText: selected.previewText ?? "", htmlContent: selected.htmlContent, textContent: selected.textContent, contentBlocks: selected.contentBlocks ?? [], templateId: selected.templateId, recipientSelectionConfirmed: selected.recipientSelectionConfirmed, designConfigured: selected.designConfigured, audienceMode: selected.audienceMode, recipientEmails: selected.customAudience ?? [] }); else if (isNewCampaign) setForm((current) => current.name ? current : emptyCampaign(searchParams.get("name") ?? "")); }, [selected, isNewCampaign, searchParams]);
   useEffect(() => {
-    if (campaignId === "new" && !form.name.trim()) setDialog("create");
-  }, [campaignId, form.name]);
+    if (isNewCampaign && !form.name.trim()) setDialog("create");
+  }, [isNewCampaign, form.name]);
   const completedSteps = [form.recipientSelectionConfirmed, Boolean(form.subject.trim()), form.designConfigured].filter(Boolean).length;
   const ready = completedSteps === 3;
 
