@@ -40,6 +40,9 @@ export function MarketingCampaignWorkspacePage() {
   const test = useMutation({ mutationFn: () => selected ? sendMarketingCampaignTest(selected.id, testEmail) : Promise.reject(new Error("Save the campaign first.")), onSuccess: () => toast.success("Test email sent."), onError: (error) => toast.error(getErrorMessage(error, "Could not send test email.")) });
   const send = useMutation({ mutationFn: () => selected ? sendMarketingCampaign(selected.id) : Promise.reject(new Error("Save the campaign first.")), onSuccess: () => { setSendConfirmed(false); refresh(); toast.success("Campaign sent to Brevo for delivery."); }, onError: (error) => toast.error(getErrorMessage(error, "Campaign could not be sent.")) });
   useEffect(() => { if (selected) setForm({ name: selected.name, subject: selected.subject, previewText: selected.previewText ?? "", htmlContent: selected.htmlContent, textContent: selected.textContent, contentBlocks: selected.contentBlocks ?? [], templateId: selected.templateId, recipientSelectionConfirmed: selected.recipientSelectionConfirmed, designConfigured: selected.designConfigured, audienceMode: selected.audienceMode, recipientEmails: selected.customAudience ?? [] }); else if (campaignId === "new") setForm((current) => current.name ? current : emptyCampaign(searchParams.get("name") ?? "")); }, [selected, campaignId, searchParams]);
+  useEffect(() => {
+    if (campaignId === "new" && !form.name.trim()) setDialog("create");
+  }, [campaignId, form.name]);
   const completedSteps = [form.recipientSelectionConfirmed, Boolean(form.subject.trim()), form.designConfigured].filter(Boolean).length;
   const ready = completedSteps === 3;
 
