@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, ChevronDown, ChevronUp, Code2, FileText, LayoutTemplate, Mail, Monitor, Plus, Send, Smartphone, Sparkles, TestTube2, Type, UsersRound } from "lucide-react";
+import { AlignLeft, ArrowLeft, Check, ChevronDown, ChevronUp, Code2, FileText, ImageIcon, LayoutTemplate, Mail, Minus, Monitor, MousePointerClick, PanelTop, Plus, Send, Share2, Smartphone, Sparkles, TestTube2, Type, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { createMarketingCampaign, getMarketingCampaigns, getMarketingSender, getMarketingTemplates, saveMarketingTemplate, searchMarketingRecipients, sendMarketingCampaign, sendMarketingCampaignTest, updateMarketingCampaign, validateMarketingRecipients, type CampaignInput } from "@/api/marketing-campaigns";
 import { getErrorMessage } from "@/api/http";
@@ -67,7 +67,7 @@ export function MarketingCampaignWorkspacePage() {
     <SenderDialog open={dialog === "sender"} onClose={() => setDialog(null)} sender={sender.data} />
     <RecipientsDialog open={dialog === "recipients"} onClose={() => setDialog(null)} form={form} setForm={setForm} />
     <SubjectDialog open={dialog === "subject"} onClose={() => setDialog(null)} form={form} setForm={setForm} />
-    <DesignDialog open={dialog === "design"} onClose={() => setDialog(null)} form={form} setForm={setForm} templates={templates.data} />
+    <CampaignDesignDialog open={dialog === "design"} onClose={() => setDialog(null)} form={form} setForm={setForm} templates={templates.data} />
     <SettingsDialog open={dialog === "settings"} onClose={() => setDialog(null)} />
     <PreviewDialog open={dialog === "preview"} onClose={() => setDialog(null)} form={form} testEmail={testEmail} setTestEmail={setTestEmail} onTest={() => test.mutate()} testing={test.isPending} saved={Boolean(selected)} />
   </div>;
@@ -88,7 +88,114 @@ function RecipientsDialog({ open, onClose, form, setForm }: { open: boolean; onC
 }
 function SubjectDialog({ open, onClose, form, setForm }: { open: boolean; onClose: () => void; form: CampaignInput; setForm: (next: CampaignInput) => void }) { const [subject, setSubject] = useState(form.subject); const [preview, setPreview] = useState(form.previewText ?? ""); useEffect(() => { if (open) { setSubject(form.subject); setPreview(form.previewText ?? ""); } }, [open, form.subject, form.previewText]); return <Modal open={open} onClose={onClose} title="Subject" description="Write what clients see first in their inbox."><div className="grid gap-6 md:grid-cols-[1fr_280px]"><div className="space-y-4"><label className="block"><span className="mb-2 block text-sm font-bold text-[#102E24]">Subject line</span><Input value={subject} maxLength={180} onChange={(event) => setSubject(event.target.value)} placeholder="A healthier smile starts here" /></label><label className="block"><span className="mb-2 block text-sm font-bold text-[#102E24]">Preview text</span><textarea className="min-h-28 w-full rounded-xl border border-[#DDEBE2] px-4 py-3 text-sm outline-none focus:border-[#087C48]" value={preview} maxLength={180} onChange={(event) => setPreview(event.target.value)} placeholder="A short supporting line for the inbox." /></label></div><InboxPreview subject={subject || "Your campaign subject"} preview={preview || "Your campaign preview text"} /></div><div className="mt-8 flex justify-end gap-3"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={subject.trim().length < 3} onClick={() => { setForm({ ...form, subject: subject.trim(), previewText: preview.trim() || null }); onClose(); }}>Save</Button></div></Modal>; }
 
-function DesignDialog({ open, onClose, form, setForm, templates }: { open: boolean; onClose: () => void; form: CampaignInput; setForm: (next: CampaignInput) => void; templates?: { starterTemplates: MarketingEmailTemplate[]; savedTemplates: MarketingEmailTemplate[] } }) {
+function CampaignDesignDialog({ open, onClose, form, setForm, templates }: { open: boolean; onClose: () => void; form: CampaignInput; setForm: (next: CampaignInput) => void; templates?: { starterTemplates: MarketingEmailTemplate[]; savedTemplates: MarketingEmailTemplate[] } }) {
+  const [mode, setMode] = useState<"blocks" | "html">("blocks");
+  const [blocks, setBlocks] = useState<MarketingContentBlock[]>(form.contentBlocks);
+  const [html, setHtml] = useState(form.htmlContent);
+  const [templateName, setTemplateName] = useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState(form.templateId ?? "");
+  const [mobile, setMobile] = useState(false);
+  const allTemplates = [...(templates?.starterTemplates ?? []), ...(templates?.savedTemplates ?? [])];
+
+  useEffect(() => {
+    if (open) {
+      setBlocks(form.contentBlocks);
+      setHtml(form.htmlContent);
+      setSelectedTemplateId(form.templateId ?? "");
+    }
+  }, [open, form.contentBlocks, form.htmlContent, form.templateId]);
+
+  const saveTemplate = useMutation({
+    mutationFn: () => saveMarketingTemplate({ name: templateName, contentBlocks: blocks, htmlContent: html, textContent: textForBlocks(blocks) }),
+    onSuccess: () => {
+      toast.success("Template saved.");
+      setTemplateName("");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Could not save template."))
+  });
+  const add = (type: MarketingContentBlockType) => setBlocks((current) => [...current, {
+    id: `${type.toLowerCase()}-${Date.now()}-${current.length}`,
+    type,
+    text: type === "TITLE" ? "New title" : type === "TEXT" ? "Add your message here." : type === "BUTTON" ? "Learn more" : "",
+    align: type === "TITLE" || type === "BUTTON" ? "center" : "left"
+  }]);
+  const update = (id: string, patch: Partial<MarketingContentBlock>) => setBlocks((current) => current.map((block) => block.id === id ? { ...block, ...patch } : block));
+  const move = (id: string, direction: -1 | 1) => setBlocks((current) => {
+    const index = current.findIndex((block) => block.id === id);
+    const target = index + direction;
+    if (target < 0 || target >= current.length) return current;
+    const next = [...current];
+    [next[index], next[target]] = [next[target], next[index]];
+    return next;
+  });
+  const selectTemplate = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    const template = allTemplates.find((value) => value.id === templateId);
+    if (!template) return;
+    setBlocks(template.contentBlocks);
+    setHtml(template.htmlContent ?? "");
+  };
+  const blockControls: { type: MarketingContentBlockType; icon: ReactNode }[] = [
+    { type: "TITLE", icon: <Type className="h-4 w-4" /> },
+    { type: "TEXT", icon: <AlignLeft className="h-4 w-4" /> },
+    { type: "IMAGE", icon: <ImageIcon className="h-4 w-4" /> },
+    { type: "BUTTON", icon: <MousePointerClick className="h-4 w-4" /> },
+    { type: "DIVIDER", icon: <Minus className="h-4 w-4" /> },
+    { type: "LOGO", icon: <PanelTop className="h-4 w-4" /> },
+    { type: "SOCIAL", icon: <Share2 className="h-4 w-4" /> },
+    { type: "SPACER", icon: <ChevronDown className="h-4 w-4" /> }
+  ];
+
+  return <Modal open={open} onClose={onClose} title="Design your email" description="Choose a Lili template or build a focused campaign with reusable content blocks.">
+    <div className="flex min-h-[calc(100dvh-215px)] flex-col">
+      <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[250px_minmax(0,1fr)_minmax(330px,420px)]">
+        <aside className="flex min-h-0 flex-col border-b border-[#E5EEE8] pb-5 lg:border-b-0 lg:border-r lg:pb-0 lg:pr-5">
+          <label className="block">
+            <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-[#60736B]">Template</span>
+            <select value={selectedTemplateId} onChange={(event) => selectTemplate(event.target.value)} className="h-11 w-full rounded-xl border border-[#DDEBE2] bg-white px-3 text-sm font-semibold text-[#102E24] outline-none focus:border-[#087C48]">
+              <option value="">Start from current content</option>
+              {templates?.starterTemplates.length ? <optgroup label="Lili starter templates">{templates.starterTemplates.map((template) => <option key={template.id} value={template.id}>{template.name} ({template.contentBlocks.length} blocks)</option>)}</optgroup> : null}
+              {templates?.savedTemplates.length ? <optgroup label="Saved templates">{templates.savedTemplates.map((template) => <option key={template.id} value={template.id}>{template.name} ({template.contentBlocks.length} blocks)</option>)}</optgroup> : null}
+            </select>
+          </label>
+          <div className="mt-6">
+            <p className="text-xs font-bold uppercase tracking-wide text-[#60736B]">Content blocks</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {blockControls.map(({ type, icon }) => <button key={type} type="button" onClick={() => { setMode("blocks"); add(type); }} className="flex min-h-12 items-center gap-2 rounded-xl border border-[#DDEBE2] px-3 text-left text-xs font-bold text-[#486259] transition hover:border-[#087C48] hover:bg-[#F7FBF8] hover:text-[#087C48]">{icon}{blockLabels[type]}</button>)}
+            </div>
+          </div>
+          <div className="mt-6 border-t border-[#E5EEE8] pt-5 lg:mt-auto">
+            <Button className="w-full" variant={mode === "blocks" ? "default" : "outline"} onClick={() => setMode("blocks")}><LayoutTemplate className="h-4 w-4" />Block editor</Button>
+            <Button className="mt-2 w-full" variant={mode === "html" ? "default" : "outline"} onClick={() => setMode("html")}><Code2 className="h-4 w-4" />Custom HTML</Button>
+          </div>
+        </aside>
+        <section className="min-h-0 overflow-y-auto pr-1">
+          <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="font-extrabold text-[#102E24]">Email content</h3><p className="mt-1 text-xs text-[#60736B]">{mode === "blocks" ? `${blocks.length} content block${blocks.length === 1 ? "" : "s"}` : "Advanced HTML editor"}</p></div></div>
+          {mode === "blocks" ? <div className="space-y-3">{blocks.length ? blocks.map((block, index) => <BlockEditor key={block.id} block={block} index={index} total={blocks.length} onChange={(patch) => update(block.id, patch)} onMove={(direction) => move(block.id, direction)} onRemove={() => setBlocks((current) => current.filter((value) => value.id !== block.id))} />) : <div className="grid min-h-48 place-items-center rounded-2xl border border-dashed border-[#C7DED1] bg-[#F7FBF8] p-6 text-center text-sm text-[#60736B]">Choose a template or add a content block to begin.</div>}</div> : <textarea className="min-h-[calc(100dvh-365px)] w-full rounded-xl border border-[#DDEBE2] px-4 py-3 font-mono text-xs leading-6 outline-none focus:border-[#087C48]" value={html} onChange={(event) => setHtml(event.target.value)} placeholder="Paste custom email HTML here" />}
+        </section>
+        <aside className="flex min-h-0 flex-col border-t border-[#E5EEE8] pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
+          <div className="mb-3 flex items-center justify-between"><div><h3 className="font-extrabold text-[#102E24]">Preview</h3><p className="mt-1 text-xs text-[#60736B]">{mobile ? "Mobile inbox" : "Desktop inbox"}</p></div><div className="flex gap-1"><Button size="icon" variant={!mobile ? "secondary" : "ghost"} onClick={() => setMobile(false)} aria-label="Desktop preview"><Monitor className="h-4 w-4" /></Button><Button size="icon" variant={mobile ? "secondary" : "ghost"} onClick={() => setMobile(true)} aria-label="Mobile preview"><Smartphone className="h-4 w-4" /></Button></div></div>
+          <EmailPreviewShell mobile={mobile} content={mode === "blocks" ? renderPreview(blocks) : html} />
+        </aside>
+      </div>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#E5EEE8] pt-5">
+        <div className="flex flex-wrap gap-2"><Input className="w-52" value={templateName} onChange={(event) => setTemplateName(event.target.value)} placeholder="Save as template" /><Button variant="outline" disabled={templateName.trim().length < 3 || !blocks.length || saveTemplate.isPending} onClick={() => saveTemplate.mutate()}>Save template</Button></div>
+        <div className="flex gap-3"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={mode === "blocks" ? !blocks.length : !html.trim()} onClick={() => { setForm({ ...form, templateId: selectedTemplateId || null, contentBlocks: mode === "blocks" ? blocks : [], htmlContent: mode === "blocks" ? renderPreview(blocks) : html, textContent: mode === "blocks" ? textForBlocks(blocks) : stripHtml(html), designConfigured: true }); onClose(); }}>Save design</Button></div>
+      </div>
+    </div>
+  </Modal>;
+}
+
+function EmailPreviewShell({ mobile, content }: { mobile: boolean; content: string }) {
+  const height = mobile ? "h-[min(58dvh,620px)]" : "h-[min(60dvh,680px)]";
+  return <div className={`mx-auto flex min-h-0 flex-1 flex-col overflow-hidden bg-[#F3F6F4] shadow-soft ${mobile ? "w-[min(320px,100%)] rounded-[32px] border-[7px] border-[#1D2D27]" : "w-full rounded-2xl border border-[#DDEBE2]"}`}>
+    {mobile ? <div className="bg-[#1D2D27] px-6 pb-3 pt-2 text-center"><span className="inline-block h-4 w-24 rounded-full bg-black" /></div> : <div className="flex items-center gap-2 border-b border-[#DDEBE2] bg-white px-4 py-3"><span className="h-2.5 w-2.5 rounded-full bg-[#F3A19A]" /><span className="h-2.5 w-2.5 rounded-full bg-[#F2C96D]" /><span className="h-2.5 w-2.5 rounded-full bg-[#83CDA5]" /><span className="ml-3 text-xs font-bold text-[#60736B]">Lili Veterinary Hospital</span></div>}
+    <div className="border-b border-[#DDEBE2] bg-white px-4 py-3"><p className="text-xs font-bold text-[#102E24]">Lili Veterinary Hospital</p><p className="mt-0.5 truncate text-[11px] text-[#60736B]">Marketing email preview</p></div>
+    <iframe title={`${mobile ? "Mobile" : "Desktop"} email design preview`} sandbox="" className={`${height} w-full flex-1 bg-white`} srcDoc={content || renderPreview([])} />
+  </div>;
+}
+
+function LegacyDesignDialog({ open, onClose, form, setForm, templates }: { open: boolean; onClose: () => void; form: CampaignInput; setForm: (next: CampaignInput) => void; templates?: { starterTemplates: MarketingEmailTemplate[]; savedTemplates: MarketingEmailTemplate[] } }) {
   const [mode, setMode] = useState<"blocks" | "html">("blocks"); const [blocks, setBlocks] = useState<MarketingContentBlock[]>(form.contentBlocks); const [html, setHtml] = useState(form.htmlContent); const [templateName, setTemplateName] = useState(""); const [mobile, setMobile] = useState(false);
   useEffect(() => { if (open) { setBlocks(form.contentBlocks); setHtml(form.htmlContent); } }, [open, form.contentBlocks, form.htmlContent]);
   const saveTemplate = useMutation({ mutationFn: () => saveMarketingTemplate({ name: templateName, contentBlocks: blocks, htmlContent: html, textContent: textForBlocks(blocks) }), onSuccess: () => { toast.success("Template saved."); setTemplateName(""); }, onError: (error) => toast.error(getErrorMessage(error, "Could not save template.")) });
