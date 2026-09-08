@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlignLeft, ArrowLeft, Check, ChevronDown, ChevronUp, Code2, FileText, ImageIcon, LayoutTemplate, Mail, Minus, Monitor, MousePointerClick, PanelTop, Plus, Send, Share2, Smartphone, Sparkles, TestTube2, Type, UsersRound } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, Check, ChevronDown, ChevronUp, Code2, FileText, ImageIcon, ImageUp, LayoutTemplate, Loader2, Mail, Minus, Monitor, MousePointerClick, PanelTop, Plus, Send, Share2, Smartphone, Sparkles, TestTube2, Type, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { createMarketingCampaign, getMarketingCampaigns, getMarketingSender, getMarketingTemplates, saveMarketingTemplate, searchMarketingRecipients, sendMarketingCampaign, sendMarketingCampaignTest, updateMarketingCampaign, validateMarketingRecipients, type CampaignInput } from "@/api/marketing-campaigns";
 import { getErrorMessage } from "@/api/http";
+import { uploadPetCareHeroImage } from "@/api/pet-care";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -171,7 +172,7 @@ function CampaignDesignDialog({ open, onClose, form, setForm, templates }: { ope
         </aside>
         <section className="min-h-0 overflow-y-auto pr-1">
           <div className="mb-4 flex items-center justify-between gap-3"><div><h3 className="font-extrabold text-[#102E24]">Email content</h3><p className="mt-1 text-xs text-[#60736B]">{mode === "blocks" ? `${blocks.length} content block${blocks.length === 1 ? "" : "s"}` : "Advanced HTML editor"}</p></div></div>
-          {mode === "blocks" ? <div className="space-y-3">{blocks.length ? blocks.map((block, index) => <BlockEditor key={block.id} block={block} index={index} total={blocks.length} onChange={(patch) => update(block.id, patch)} onMove={(direction) => move(block.id, direction)} onRemove={() => setBlocks((current) => current.filter((value) => value.id !== block.id))} />) : <div className="grid min-h-48 place-items-center rounded-2xl border border-dashed border-[#C7DED1] bg-[#F7FBF8] p-6 text-center text-sm text-[#60736B]">Choose a template or add a content block to begin.</div>}</div> : <textarea className="min-h-[calc(100dvh-365px)] w-full rounded-xl border border-[#DDEBE2] px-4 py-3 font-mono text-xs leading-6 outline-none focus:border-[#087C48]" value={html} onChange={(event) => setHtml(event.target.value)} placeholder="Paste custom email HTML here" />}
+          {mode === "blocks" ? <div className="space-y-3">{blocks.length ? blocks.map((block, index) => <CampaignBlockEditor key={block.id} block={block} index={index} total={blocks.length} onChange={(patch) => update(block.id, patch)} onMove={(direction) => move(block.id, direction)} onRemove={() => setBlocks((current) => current.filter((value) => value.id !== block.id))} />) : <div className="grid min-h-48 place-items-center rounded-2xl border border-dashed border-[#C7DED1] bg-[#F7FBF8] p-6 text-center text-sm text-[#60736B]">Choose a template or add a content block to begin.</div>}</div> : <textarea className="min-h-[calc(100dvh-365px)] w-full rounded-xl border border-[#DDEBE2] px-4 py-3 font-mono text-xs leading-6 outline-none focus:border-[#087C48]" value={html} onChange={(event) => setHtml(event.target.value)} placeholder="Paste custom email HTML here" />}
         </section>
         <aside className="flex min-h-0 flex-col border-t border-[#E5EEE8] pt-5 lg:border-l lg:border-t-0 lg:pl-5 lg:pt-0">
           <div className="mb-3 flex items-center justify-between"><div><h3 className="font-extrabold text-[#102E24]">Preview</h3><p className="mt-1 text-xs text-[#60736B]">{mobile ? "Mobile inbox" : "Desktop inbox"}</p></div><div className="flex gap-1"><Button size="icon" variant={!mobile ? "secondary" : "ghost"} onClick={() => setMobile(false)} aria-label="Desktop preview"><Monitor className="h-4 w-4" /></Button><Button size="icon" variant={mobile ? "secondary" : "ghost"} onClick={() => setMobile(true)} aria-label="Mobile preview"><Smartphone className="h-4 w-4" /></Button></div></div>
@@ -192,6 +193,42 @@ function EmailPreviewShell({ mobile, content }: { mobile: boolean; content: stri
     {mobile ? <div className="bg-[#1D2D27] px-6 pb-3 pt-2 text-center"><span className="inline-block h-4 w-24 rounded-full bg-black" /></div> : <div className="flex items-center gap-2 border-b border-[#DDEBE2] bg-white px-4 py-3"><span className="h-2.5 w-2.5 rounded-full bg-[#F3A19A]" /><span className="h-2.5 w-2.5 rounded-full bg-[#F2C96D]" /><span className="h-2.5 w-2.5 rounded-full bg-[#83CDA5]" /><span className="ml-3 text-xs font-bold text-[#60736B]">Lili Veterinary Hospital</span></div>}
     <div className="border-b border-[#DDEBE2] bg-white px-4 py-3"><p className="text-xs font-bold text-[#102E24]">Lili Veterinary Hospital</p><p className="mt-0.5 truncate text-[11px] text-[#60736B]">Marketing email preview</p></div>
     <iframe title={`${mobile ? "Mobile" : "Desktop"} email design preview`} sandbox="" className={`${height} w-full flex-1 bg-white`} srcDoc={content || renderPreview([])} />
+  </div>;
+}
+
+function CampaignBlockEditor({ block, index, total, onChange, onMove, onRemove }: { block: MarketingContentBlock; index: number; total: number; onChange: (patch: Partial<MarketingContentBlock>) => void; onMove: (direction: -1 | 1) => void; onRemove: () => void }) {
+  const hasText = ["TITLE", "TEXT", "BUTTON"].includes(block.type);
+  const hasImage = ["IMAGE", "LOGO"].includes(block.type);
+  const hasUrl = ["IMAGE", "BUTTON", "LOGO"].includes(block.type);
+  const canAlign = ["TITLE", "TEXT", "IMAGE", "BUTTON", "LOGO", "SOCIAL"].includes(block.type);
+  const upload = useMutation({
+    mutationFn: uploadPetCareHeroImage,
+    onSuccess: (image) => {
+      onChange({ url: image.url });
+      toast.success("Image uploaded.");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Could not upload image."))
+  });
+  const imageInput = hasImage ? <input type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/avif,image/bmp" className="sr-only" disabled={upload.isPending} onChange={(event) => { const file = event.target.files?.[0]; if (file) upload.mutate(file); event.target.value = ""; }} /> : null;
+  const alignments: { value: "left" | "center" | "right"; label: string; icon: ReactNode }[] = [
+    { value: "left", label: "Align left", icon: <AlignLeft className="h-3.5 w-3.5" /> },
+    { value: "center", label: "Align center", icon: <AlignCenter className="h-3.5 w-3.5" /> },
+    { value: "right", label: "Align right", icon: <AlignRight className="h-3.5 w-3.5" /> }
+  ];
+  return <div className="rounded-xl border border-[#DDEBE2] p-3">
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <span className="text-xs font-bold uppercase tracking-wide text-[#087C48]">{blockLabels[block.type]}</span>
+      <div className="flex items-center gap-1">
+        {canAlign ? <div className="mr-2 inline-flex rounded-lg border border-[#DDEBE2] bg-[#F7FBF8] p-0.5" aria-label="Content alignment">{alignments.map(({ value, label, icon }) => <button key={value} type="button" title={label} aria-label={label} onClick={() => onChange({ align: value })} className={`grid h-7 w-7 place-items-center rounded-md ${block.align === value || (!block.align && value === "left") ? "bg-white text-[#087C48] shadow-sm" : "text-[#60736B] hover:text-[#087C48]"}`}>{icon}</button>)}</div> : null}
+        <button type="button" className="p-1 text-[#60736B] disabled:opacity-30" disabled={index === 0} onClick={() => onMove(-1)} aria-label="Move block up"><ChevronUp className="h-4 w-4" /></button>
+        <button type="button" className="p-1 text-[#60736B] disabled:opacity-30" disabled={index === total - 1} onClick={() => onMove(1)} aria-label="Move block down"><ChevronDown className="h-4 w-4" /></button>
+        <button type="button" className="p-1 text-red-600" onClick={onRemove} aria-label="Remove block">×</button>
+      </div>
+    </div>
+    {hasText ? <Input className="mt-2" value={block.text ?? ""} onChange={(event) => onChange({ text: event.target.value })} placeholder={block.type === "BUTTON" ? "Button label" : "Content"} /> : null}
+    {hasImage ? <div className="mt-2 flex flex-wrap items-center gap-2"><label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-[#C7DED1] bg-[#F7FBF8] px-3 text-xs font-bold text-[#176440] hover:border-[#087C48]">{upload.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageUp className="h-4 w-4" />}{upload.isPending ? "Uploading image" : block.url ? "Replace image" : "Upload image"}{imageInput}</label>{block.url ? <span className="max-w-full truncate text-xs text-[#60736B]">Image ready</span> : null}</div> : null}
+    {hasUrl ? <Input className="mt-2" type="url" value={block.url ?? ""} onChange={(event) => onChange({ url: event.target.value })} placeholder={block.type === "BUTTON" ? "Button destination URL" : "Paste an image URL"} /> : null}
+    {hasImage ? <Input className="mt-2" value={block.alt ?? ""} onChange={(event) => onChange({ alt: event.target.value })} placeholder="Image description" /> : null}
   </div>;
 }
 
