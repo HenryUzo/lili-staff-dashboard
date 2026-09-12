@@ -1,0 +1,9 @@
+import { api } from "@/api/http";
+
+export type GiveawayCampaign = { id: string; name: string; isPublished: boolean; raffleEnabled: boolean; prizeDescription: string; discountPercent: number; expiresAt: string | null; termsSummary: string; termsContent: string; termsVersion: string; winnerEntryId: string | null };
+export type GiveawayEntry = { id: string; currentPatient: boolean; marketingOptIn: boolean; marketingConfirmed: boolean; rewardCode: string; rewardEmailSentAt: string | null; redeemedAt: string | null; createdAt: string; owner: { firstName: string; lastName: string; email: string | null; phoneNumber: string }; pets: { id: string; name: string; species: string; age: string | null; breed: string | null }[] };
+export async function getGiveawayCampaign() { return (await api.get<GiveawayCampaign>("/api/wellness-giveaway")).data; }
+export async function updateGiveawayCampaign(input: Partial<GiveawayCampaign>) { const { name, isPublished, raffleEnabled, prizeDescription, discountPercent, expiresAt, termsSummary, termsContent, termsVersion } = input; return (await api.patch<GiveawayCampaign>("/api/wellness-giveaway", { name, isPublished, raffleEnabled, prizeDescription, discountPercent, expiresAt, termsSummary, termsContent, termsVersion })).data; }
+export async function getGiveawayEntries(search?: string) { return (await api.get<{ items: GiveawayEntry[]; metrics: { entries: number; redeemed: number; optedIn: number; currentPatients: number } }>("/api/wellness-giveaway/entries", { params: { search } })).data; }
+export async function redeemGiveawayCode(code: string) { return (await api.post("/api/wellness-giveaway/entries/redeem", { code })).data; }
+export async function drawGiveawayWinner() { return (await api.post<GiveawayCampaign>("/api/wellness-giveaway/draw")).data; }
