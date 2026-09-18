@@ -248,10 +248,10 @@ function CampaignBlockEditor({ block, index, total, onChange, onMove, onRemove }
   const titleEditorRef = useRef<HTMLInputElement>(null);
   const textEditorRef = useRef<HTMLTextAreaElement>(null);
   const upload = useMutation({
-    mutationFn: uploadPetCareHeroImage,
+    mutationFn: async (file: File) => uploadPetCareHeroImage(await prepareCampaignImage(file)),
     onSuccess: (image) => {
       onChange({ url: image.url });
-      toast.success("Image uploaded.");
+      toast.success("Image uploaded and optimized for email.");
     },
     onError: (error) => toast.error(getErrorMessage(error, "Could not upload image."))
   });
@@ -318,3 +318,41 @@ function textForBlocks(blocks: MarketingContentBlock[]) { return blocks.map((blo
 function stripHtml(value: string) { return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || "Lili Veterinary Hospital"; }
 function renderInlineFormatting(value: string) { return escape(value).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/__(.+?)__/g, "<u>$1</u>").replace(/\*([^*]+)\*/g, "<em>$1</em>").replace(/\n/g, "<br>"); }
 function escape(value: string) { return value.replace(/[&<>'\"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character); }
+
+async function prepareCampaignImage(file: File) {
+  const maxBytes = 700_000;
+  const maxDimension = 1600;
+  if (file.size <= maxBytes) return file;
+
+  const bitmap = await createImageBitmap(file);
+  try {
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    let width = Math.max(1, Math.round(bitmap.width * scale));
+    let height = Math.max(1, Math.round(bitmap.height * scale));
+    let quality = 0.86;
+    let output: Blob | null = null;
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext("2d");
+      if (!context) throw new Error("This browser could not prepare the image.");
+      context.fillStyle = "#ffffff";
+      context.fillRect(0, 0, width, height);
+      context.drawImage(bitmap, 0, 0, width, height);
+      output = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+      if (!output) throw new Error("This browser could not prepare the image.");
+      if (output.size <= maxBytes) break;
+      width = Math.max(1, Math.round(width * 0.82));
+      height = Math.max(1, Math.round(height * 0.82));
+      quality = Math.max(0.58, quality - 0.07);
+    }
+
+    if (!output) throw new Error("This browser could not prepare the image.");
+    const baseName = file.name.replace(/\.[^.]+$/, "") || "campaign-image";
+    return new File([output], `${baseName}.jpg`, { type: "image/jpeg", lastModified: Date.now() });
+  } finally {
+    bitmap.close();
+  }
+}
