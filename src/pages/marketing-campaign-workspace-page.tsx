@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, Check, ChevronDown, ChevronUp, Code2, FileText, ImageIcon, ImageUp, LayoutTemplate, Loader2, Mail, Minus, Monitor, MousePointerClick, PanelTop, Plus, Send, Share2, Smartphone, Sparkles, TestTube2, Type, UsersRound } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, ArrowLeft, Bold, Check, ChevronDown, ChevronUp, Code2, FileText, ImageIcon, ImageUp, Italic, LayoutTemplate, Loader2, Mail, Minus, Monitor, MousePointerClick, PanelTop, Plus, Send, Share2, Smartphone, Sparkles, TestTube2, Type, Underline, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { createMarketingCampaign, getMarketingCampaigns, getMarketingSender, getMarketingTemplates, saveMarketingTemplate, searchMarketingRecipients, sendMarketingCampaign, sendMarketingCampaignTest, updateMarketingCampaign, validateMarketingRecipients, type CampaignInput } from "@/api/marketing-campaigns";
 import { getErrorMessage } from "@/api/http";
@@ -229,6 +229,9 @@ function CampaignBlockEditor({ block, index, total, onChange, onMove, onRemove }
   const hasImage = ["IMAGE", "LOGO"].includes(block.type);
   const hasUrl = ["IMAGE", "BUTTON", "LOGO"].includes(block.type);
   const canAlign = ["TITLE", "TEXT", "IMAGE", "BUTTON", "LOGO", "SOCIAL"].includes(block.type);
+  const supportsInlineFormatting = block.type === "TITLE" || block.type === "TEXT";
+  const titleEditorRef = useRef<HTMLInputElement>(null);
+  const textEditorRef = useRef<HTMLTextAreaElement>(null);
   const upload = useMutation({
     mutationFn: uploadPetCareHeroImage,
     onSuccess: (image) => {
@@ -243,6 +246,23 @@ function CampaignBlockEditor({ block, index, total, onChange, onMove, onRemove }
     { value: "center", label: "Align center", icon: <AlignCenter className="h-3.5 w-3.5" /> },
     { value: "right", label: "Align right", icon: <AlignRight className="h-3.5 w-3.5" /> }
   ];
+  const applyInlineFormat = (marker: "**" | "*" | "__") => {
+    const editor = block.type === "TEXT" ? textEditorRef.current : titleEditorRef.current;
+    const value = block.text ?? "";
+    const start = editor?.selectionStart ?? 0;
+    const end = editor?.selectionEnd ?? value.length;
+    const hasSelection = start !== end;
+    const selection = hasSelection ? value.slice(start, end) : value || "Text";
+    const prefix = hasSelection ? value.slice(0, start) : "";
+    const suffix = hasSelection ? value.slice(end) : "";
+    const next = `${prefix}${marker}${selection}${marker}${suffix}`;
+    onChange({ text: next });
+    requestAnimationFrame(() => {
+      editor?.focus();
+      const selectionStart = hasSelection ? start + marker.length : marker.length;
+      editor?.setSelectionRange(selectionStart, selectionStart + selection.length);
+    });
+  };
   return <div className="rounded-xl border border-[#DDEBE2] p-3">
     <div className="flex flex-wrap items-center justify-between gap-3">
       <span className="text-xs font-bold uppercase tracking-wide text-[#087C48]">{blockLabels[block.type]}</span>
@@ -253,7 +273,9 @@ function CampaignBlockEditor({ block, index, total, onChange, onMove, onRemove }
         <button type="button" className="p-1 text-red-600" onClick={onRemove} aria-label="Remove block">×</button>
       </div>
     </div>
-    {hasText ? <Input className="mt-2" value={block.text ?? ""} onChange={(event) => onChange({ text: event.target.value })} placeholder={block.type === "BUTTON" ? "Button label" : "Content"} /> : null}
+    {supportsInlineFormatting ? <div className="mt-3 flex items-center gap-1 rounded-lg border border-[#DDEBE2] bg-[#F7FBF8] p-1" aria-label="Text formatting"><button type="button" title="Bold selected text" aria-label="Bold selected text" className="grid h-8 w-8 place-items-center rounded-md text-[#486259] hover:bg-white hover:text-[#087C48]" onClick={() => applyInlineFormat("**")}><Bold className="h-4 w-4" /></button><button type="button" title="Italicize selected text" aria-label="Italicize selected text" className="grid h-8 w-8 place-items-center rounded-md text-[#486259] hover:bg-white hover:text-[#087C48]" onClick={() => applyInlineFormat("*")}><Italic className="h-4 w-4" /></button><button type="button" title="Underline selected text" aria-label="Underline selected text" className="grid h-8 w-8 place-items-center rounded-md text-[#486259] hover:bg-white hover:text-[#087C48]" onClick={() => applyInlineFormat("__")}><Underline className="h-4 w-4" /></button><span className="ml-2 text-xs font-medium text-[#60736B]">Select text, then format</span></div> : null}
+    {hasText && block.type === "TEXT" ? <textarea ref={textEditorRef} className="mt-2 min-h-28 w-full resize-y rounded-xl border border-[#DDEBE2] px-4 py-3 text-sm leading-6 text-[#102E24] outline-none focus:border-[#087C48]" value={block.text ?? ""} onChange={(event) => onChange({ text: event.target.value })} placeholder="Add your message here." /> : null}
+    {hasText && block.type !== "TEXT" ? <Input ref={titleEditorRef} className="mt-2" value={block.text ?? ""} onChange={(event) => onChange({ text: event.target.value })} placeholder={block.type === "BUTTON" ? "Button label" : "Content"} /> : null}
     {hasImage ? <div className="mt-2 flex flex-wrap items-center gap-2"><label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-lg border border-[#C7DED1] bg-[#F7FBF8] px-3 text-xs font-bold text-[#176440] hover:border-[#087C48]">{upload.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageUp className="h-4 w-4" />}{upload.isPending ? "Uploading image" : block.url ? "Replace image" : "Upload image"}{imageInput}</label>{block.url ? <span className="max-w-full truncate text-xs text-[#60736B]">Image ready</span> : null}</div> : null}
     {hasUrl ? <Input className="mt-2" type="url" value={block.url ?? ""} onChange={(event) => onChange({ url: event.target.value })} placeholder={block.type === "BUTTON" ? "Button destination URL" : "Paste an image URL"} /> : null}
     {hasImage ? <Input className="mt-2" value={block.alt ?? ""} onChange={(event) => onChange({ alt: event.target.value })} placeholder="Image description" /> : null}
@@ -276,7 +298,8 @@ function InboxPreview({ subject, preview }: { subject: string; preview: string }
 function ReadOnlyField({ label, value }: { label: string; value: string }) { return <label className="block"><span className="mb-2 block text-sm font-bold text-[#102E24]">{label}</span><div className="rounded-xl border border-[#DDEBE2] bg-[#F7FBF8] px-4 py-3 text-sm text-[#486259]">{value}</div></label>; }
 function Setting({ title, text }: { title: string; text: string }) { return <div className="rounded-xl border border-[#DDEBE2] p-4"><h3 className="font-extrabold text-[#102E24]">{title}</h3><p className="mt-1 text-sm text-[#60736B]">{text}</p></div>; }
 function TemplateButton({ template, onClick }: { template: MarketingEmailTemplate; onClick: () => void }) { return <button type="button" onClick={onClick} className="w-full rounded-xl border border-[#DDEBE2] p-3 text-left hover:border-[#087C48]"><p className="text-sm font-bold text-[#102E24]">{template.name}</p><p className="mt-1 text-xs text-[#60736B]">{template.contentBlocks.length} blocks</p></button>; }
-function renderPreview(blocks: MarketingContentBlock[]) { const sections = blocks.map((block) => { const text = escape(block.text ?? "").replace(/\n/g, "<br>"); const url = escape(block.url ?? ""); if (block.type === "TITLE") return `<h1 style="color:#102E24;text-align:${block.align ?? "left"};font:700 28px Arial">${text}</h1>`; if (block.type === "TEXT") return `<p style="color:#33463d;text-align:${block.align ?? "left"};font:16px/1.55 Arial">${text}</p>`; if ((block.type === "IMAGE" || block.type === "LOGO") && url) return `<p style="text-align:${block.align ?? "left"}"><img src="${url}" alt="${escape(block.alt ?? "")}" style="max-width:${block.type === "LOGO" ? "180px" : "100%"};height:auto" /></p>`; if (block.type === "BUTTON" && url) return `<p style="text-align:${block.align ?? "center"}"><a href="${url}" style="display:inline-block;border-radius:8px;background:#087C48;color:white;padding:13px 20px;font:bold 15px Arial;text-decoration:none">${text || "Learn more"}</a></p>`; if (block.type === "DIVIDER") return "<hr style=\"border:0;border-top:1px solid #DDEBE2;margin:24px 0\">"; if (block.type === "SPACER") return "<div style=\"height:24px\"></div>"; if (block.type === "SOCIAL") return `<p style="color:#087C48;text-align:${block.align ?? "center"};font:14px Arial">Follow Lili Veterinary Hospital online</p>`; return ""; }).join(""); return `<div style="max-width:640px;margin:auto;padding:28px;background:#fff">${sections}<hr><p style="font:12px Arial;color:#59665f">Lili Veterinary Hospital<br>Unsubscribe from promotional emails</p></div>`; }
+function renderPreview(blocks: MarketingContentBlock[]) { const sections = blocks.map((block) => { const text = renderInlineFormatting(block.text ?? ""); const url = escape(block.url ?? ""); if (block.type === "TITLE") return `<h1 style="color:#102E24;text-align:${block.align ?? "left"};font:700 28px Arial">${text}</h1>`; if (block.type === "TEXT") return `<p style="color:#33463d;text-align:${block.align ?? "left"};font:16px/1.55 Arial">${text}</p>`; if ((block.type === "IMAGE" || block.type === "LOGO") && url) return `<p style="text-align:${block.align ?? "left"}"><img src="${url}" alt="${escape(block.alt ?? "")}" style="max-width:${block.type === "LOGO" ? "180px" : "100%"};height:auto" /></p>`; if (block.type === "BUTTON" && url) return `<p style="text-align:${block.align ?? "center"}"><a href="${url}" style="display:inline-block;border-radius:8px;background:#087C48;color:white;padding:13px 20px;font:bold 15px Arial;text-decoration:none">${text || "Learn more"}</a></p>`; if (block.type === "DIVIDER") return "<hr style=\"border:0;border-top:1px solid #DDEBE2;margin:24px 0\">"; if (block.type === "SPACER") return "<div style=\"height:24px\"></div>"; if (block.type === "SOCIAL") return `<p style="color:#087C48;text-align:${block.align ?? "center"};font:14px Arial">Follow Lili Veterinary Hospital online</p>`; return ""; }).join(""); return `<div style="max-width:640px;margin:auto;padding:28px;background:#fff">${sections}<hr><p style="font:12px Arial;color:#59665f">Lili Veterinary Hospital<br>Unsubscribe from promotional emails</p></div>`; }
 function textForBlocks(blocks: MarketingContentBlock[]) { return blocks.map((block) => block.text ?? block.url ?? "").filter(Boolean).join("\n\n") || "Lili Veterinary Hospital"; }
 function stripHtml(value: string) { return value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || "Lili Veterinary Hospital"; }
+function renderInlineFormatting(value: string) { return escape(value).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/__(.+?)__/g, "<u>$1</u>").replace(/\*([^*]+)\*/g, "<em>$1</em>").replace(/\n/g, "<br>"); }
 function escape(value: string) { return value.replace(/[&<>'\"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character] ?? character); }
