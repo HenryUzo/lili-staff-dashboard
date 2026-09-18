@@ -1,4 +1,5 @@
 import { api } from "@/api/http";
+import { API_BASE_URL } from "@/lib/constants";
 import type { PetCareArticle, PetCareArticleInput, PetCarePublishingStatus, PetCareReviewer, PetCareReviewerInput } from "@/types/api";
 
 export interface PetCareFilters {
@@ -30,13 +31,22 @@ export async function uploadPetCareHeroImage(file: File) {
   const formData = new FormData();
   formData.append("image", file);
 
-  return (await api.post<{
+  const response = await fetch(`${API_BASE_URL}/api/admin/pet-care/images`, {
+    method: "POST",
+    body: formData,
+    credentials: "include"
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+    throw new Error(payload?.error?.message ?? "Could not upload image");
+  }
+  return response.json() as Promise<{
     url: string;
     storageKey: string;
     fileName: string;
     mimeType: string;
     sizeBytes: number;
-  }>("/api/admin/pet-care/images", formData)).data;
+  }>;
 }
 
 export async function getPetCareReviewers() {
