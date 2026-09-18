@@ -40,7 +40,18 @@ export function MarketingCampaignWorkspacePage() {
   const canManage = isSuperAdmin(user);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["marketing-campaigns"] });
   const persist = useMutation({ mutationFn: () => selected ? updateMarketingCampaign(selected.id, form) : createMarketingCampaign(form), onSuccess: (campaign) => { setSendConfirmed(false); refresh(); navigate(`/campaigns/${campaign.id}`, { replace: true }); toast.success("Campaign draft saved."); }, onError: (error) => toast.error(getErrorMessage(error, "Could not save campaign.")) });
-  const test = useMutation({ mutationFn: () => selected ? sendMarketingCampaignTest(selected.id, testEmail) : Promise.reject(new Error("Save the campaign first.")), onSuccess: () => toast.success("Test email sent."), onError: (error) => toast.error(getErrorMessage(error, "Could not send test email.")) });
+  const test = useMutation({
+    mutationFn: async () => {
+      if (!selected) throw new Error("Save the campaign first.");
+      await updateMarketingCampaign(selected.id, form);
+      return sendMarketingCampaignTest(selected.id, testEmail);
+    },
+    onSuccess: () => {
+      refresh();
+      toast.success("Latest changes saved and test email sent.");
+    },
+    onError: (error) => toast.error(getErrorMessage(error, "Could not save and send the test email."))
+  });
   const send = useMutation({ mutationFn: () => selected ? sendMarketingCampaign(selected.id) : Promise.reject(new Error("Save the campaign first.")), onSuccess: () => { setSendConfirmed(false); refresh(); toast.success("Campaign sent to Brevo for delivery."); }, onError: (error) => toast.error(getErrorMessage(error, "Campaign could not be sent.")) });
   useEffect(() => { if (selected) setForm({ name: selected.name, subject: selected.subject, previewText: selected.previewText ?? "", htmlContent: selected.htmlContent, textContent: selected.textContent, contentBlocks: selected.contentBlocks ?? [], templateId: selected.templateId, recipientSelectionConfirmed: selected.recipientSelectionConfirmed, designConfigured: selected.designConfigured, audienceMode: selected.audienceMode, recipientEmails: selected.customAudience ?? [] }); else if (isNewCampaign) setForm((current) => current.name ? current : emptyCampaign(searchParams.get("name") ?? "")); }, [selected, isNewCampaign, searchParams]);
   useEffect(() => {
@@ -177,6 +188,7 @@ function CampaignDesignDialog({ open, onClose, form, setForm, templates }: { ope
     { type: "SOCIAL", icon: <Share2 className="h-4 w-4" /> },
     { type: "SPACER", icon: <ChevronDown className="h-4 w-4" /> }
   ];
+  const hasIncompleteImage = mode === "blocks" && blocks.some((block) => (block.type === "IMAGE" || block.type === "LOGO") && !block.url?.trim());
 
   return <Modal open={open} onClose={onClose} title="Design your email" description="Choose a Lili template or build a focused campaign with reusable content blocks.">
     <div className="flex min-h-[calc(100dvh-215px)] flex-col">
@@ -212,7 +224,7 @@ function CampaignDesignDialog({ open, onClose, form, setForm, templates }: { ope
       </div>
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[#E5EEE8] pt-5">
         <div className="flex flex-wrap gap-2"><Input className="w-52" value={templateName} onChange={(event) => setTemplateName(event.target.value)} placeholder="Save as template" /><Button variant="outline" disabled={templateName.trim().length < 3 || !blocks.length || saveTemplate.isPending} onClick={() => saveTemplate.mutate()}>Save template</Button></div>
-        <div className="flex gap-3"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={mode === "blocks" ? !blocks.length : !html.trim()} onClick={() => { setForm({ ...form, templateId: selectedTemplateId || null, contentBlocks: mode === "blocks" ? blocks : [], htmlContent: mode === "blocks" ? renderPreview(blocks) : html, textContent: mode === "blocks" ? textForBlocks(blocks) : stripHtml(html), designConfigured: true }); onClose(); }}>Save design</Button></div>
+        <div className="flex items-center gap-3">{hasIncompleteImage ? <span className="text-xs font-semibold text-[#A05D15]">Upload or remove every empty image block.</span> : null}<Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={mode === "blocks" ? !blocks.length || hasIncompleteImage : !html.trim()} onClick={() => { setForm({ ...form, templateId: selectedTemplateId || null, contentBlocks: mode === "blocks" ? blocks : [], htmlContent: mode === "blocks" ? renderPreview(blocks) : html, textContent: mode === "blocks" ? textForBlocks(blocks) : stripHtml(html), designConfigured: true }); onClose(); }}>Save design</Button></div>
       </div>
     </div>
   </Modal>;
