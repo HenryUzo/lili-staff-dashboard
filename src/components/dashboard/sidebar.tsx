@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { BookOpenText, ChevronDown, ClipboardList, Gift, LayoutDashboard, Mail, PawPrint, ShieldCheck, Stethoscope, UsersRound } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
-import careOperationsHeartline from "@/assets/illustrations/care-operations-heartline.png";
 import dogCatSidebarIllustration from "@/assets/illustrations/dog-cat-sidebar-illustration.png";
 import liliLogo from "@/assets/illustrations/lili-veterinary-hospital-logo.svg";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -51,28 +50,11 @@ function SidebarContent({ onNavigate }: SidebarContentProps) {
 
   return (
     <>
-      <div className="mb-8 flex items-center">
+      <div className="mb-5 flex items-center">
         <img src={liliLogo} alt="Lili Veterinary Hospital" className="h-auto w-[205px] rounded-sm object-contain" />
       </div>
 
-      <div className="relative mb-6 min-h-[132px] overflow-hidden rounded-[22px] bg-[linear-gradient(145deg,#087C48_0%,#06452F_100%)] p-5 text-white">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_84%_70%,rgba(126,211,166,0.22),transparent_38%)]" />
-        <img
-          src={careOperationsHeartline}
-          alt=""
-          aria-hidden="true"
-          className="pointer-events-none absolute bottom-[-8px] right-[-30px] w-40 opacity-[0.14] mix-blend-screen"
-        />
-        <p className="relative text-[10px] font-bold uppercase tracking-[0.18em] text-white/72">Care operations</p>
-        <h3 className="relative mt-3 max-w-[165px] text-[17px] font-extrabold leading-[1.2] tracking-[-0.02em]">
-          Calm control for intake.
-        </h3>
-        <p className="relative mt-2 max-w-[160px] text-[12px] font-medium leading-[1.45] text-white/80">
-          Triage urgent cases fast.
-        </p>
-      </div>
-
-      <nav className="space-y-3">
+      <nav className="space-y-2">
         {navItems.filter((item) => item.superAdminOnly ? isSuperAdmin(user) : !item.permission || hasPermission(user, item.permission)).map((item) => (
           <NavLink
             key={item.to}
