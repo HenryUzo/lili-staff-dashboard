@@ -317,6 +317,7 @@ export interface AppointmentRequestListItem {
   id: string;
   status: AppointmentRequestStatus;
   visitType: VisitType;
+  bookingSource: "STANDARD" | "SIMPLIFIED";
   timezone: string | null;
   confirmedStartAt: string | null;
   confirmedEndAt: string | null;
@@ -349,6 +350,15 @@ export interface AppointmentRequestDetail extends AppointmentRequestListItem {
   symptomDuration: string | null;
   confirmedByStaffUserId: string | null;
   files: UploadedFile[];
+  smsDeliveries: Array<{
+    id: string;
+    kind: "REQUEST_RECEIVED" | "APPOINTMENT_CONFIRMED";
+    status: "QUEUED" | "SENT" | "ACCEPTED" | "DELIVERED" | "FAILED";
+    errorMessage: string | null;
+    sentAt: string | null;
+    deliveredAt: string | null;
+    createdAt: string;
+  }>;
   draft: {
     id: string;
     sessionToken: string;
@@ -423,6 +433,7 @@ export interface RawAppointmentBase {
   id: string;
   status: AppointmentRequestStatus;
   visitType: VisitType;
+  bookingSource?: "STANDARD" | "SIMPLIFIED";
   timezone: string | null;
   confirmedStartAt: string | null;
   confirmedEndAt: string | null;
@@ -455,6 +466,7 @@ export interface RawAppointmentDetail extends RawAppointmentBase {
   currentMedications: string | null;
   previousVeterinarian: string | null;
   symptomDuration: string | null;
+  smsDeliveries?: AppointmentRequestDetail["smsDeliveries"];
   draft: {
     id: string;
     sessionToken: string;

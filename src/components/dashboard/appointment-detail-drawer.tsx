@@ -1255,6 +1255,7 @@ export function AppointmentDetailDrawer({
                       <DetailField label="Sex" value={request.pet.sex} />
                       <DetailField label="Weight" value={request.pet.weightLbs ? `${request.pet.weightLbs} lbs` : null} />
                       <DetailField label="Visit type" value={formatVisitType(request.visitType)} />
+                      <DetailField label="Booking source" value={request.bookingSource === "SIMPLIFIED" ? "Simplified booking" : "Standard booking"} />
                       <DetailField label="Timezone" value={request.timezone} />
                     </div>
                   </div>
@@ -1297,6 +1298,7 @@ export function AppointmentDetailDrawer({
                   <div className="rounded-[20px] border border-[#DDEBE2] bg-white p-6">
                     <h3 className="text-xl font-bold text-[#102E24]">Audit and meta</h3>
                     <div className="mt-5 grid gap-5 md:grid-cols-2">
+                      <DetailField label="Latest SMS" value={request.smsDeliveries?.[0] ? `${request.smsDeliveries[0].kind === "REQUEST_RECEIVED" ? "Request received" : "Confirmation"}: ${request.smsDeliveries[0].status.toLowerCase()}` : "No SMS delivery recorded"} />
                       <DetailField label="Created" value={formatDateTime(request.createdAt)} />
                       <DetailField label="Updated" value={formatDateTime(request.updatedAt)} />
                       <CopyableId label="Appointment request id" value={request.id} />

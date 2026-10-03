@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ComponentType, ReactNode } from "react";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AlertTriangle,
   BellRing,
@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { getAppointmentRequests, runAppointmentOverdueSweep } from "@/api/appointments";
+import { getAppointmentBookingAdminSettings, getAppointmentRequests, runAppointmentOverdueSweep, updateAppointmentBookingAdminSettings, type AppointmentBookingMode } from "@/api/appointments";
 import { getErrorMessage } from "@/api/http";
 import { useAuth } from "@/auth/auth-context";
 import { AppointmentDetailDrawer } from "@/components/dashboard/appointment-detail-drawer";
@@ -308,6 +308,23 @@ function PetAvatar({ item }: { item: AppointmentRequestListItem }) {
 export function AppointmentRequestsPage() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const bookingSettingsQuery = useQuery({
+    queryKey: ["appointment-booking-admin-settings"],
+    queryFn: getAppointmentBookingAdminSettings,
+    enabled: user?.role === "SUPER_ADMIN"
+  });
+  const [bookingMode, setBookingMode] = useState<AppointmentBookingMode>("STANDARD");
+  useEffect(() => {
+    if (bookingSettingsQuery.data?.mode) setBookingMode(bookingSettingsQuery.data.mode);
+  }, [bookingSettingsQuery.data?.mode]);
+  const bookingModeMutation = useMutation({
+    mutationFn: updateAppointmentBookingAdminSettings,
+    onSuccess: (data) => {
+      queryClient.setQueryData(["appointment-booking-admin-settings"], data);
+      toast.success("Public booking mode updated");
+    },
+    onError: (error) => toast.error(getErrorMessage(error))
+  });
   const navigate = useNavigate();
   const location = useLocation();
   const { appointmentId } = useParams();
@@ -453,6 +470,25 @@ export function AppointmentRequestsPage() {
           />
         </div>
       </section>
+
+      {user?.role === "SUPER_ADMIN" ? (
+        <section className="rounded-[26px] border border-[rgba(221,235,226,0.9)] bg-white p-[26px]">
+          <div className="flex flex-wrap items-center justify-between gap-5">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#087C48]">Public booking experience</p>
+              <h2 className="mt-2 text-xl font-black text-[#102E24]">Choose the active booking flow</h2>
+              <p className="mt-1 text-sm text-[#5F756C]">Changes apply to the public appointment page without a redeployment.</p>
+            </div>
+            <a href="https://www.liliveterinaryhospital.com/book-appointment" target="_blank" rel="noreferrer" className="text-sm font-black text-[#087C48] underline">View public page</a>
+          </div>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            {(["STANDARD", "SIMPLIFIED"] as const).map((mode) => (
+              <button key={mode} type="button" onClick={() => setBookingMode(mode)} className={cn("h-11 rounded-xl border px-5 text-sm font-extrabold", bookingMode === mode ? "border-[#087C48] bg-[#EAF7F0] text-[#087C48]" : "border-[#DDEBE2] bg-white text-[#5F756C]")}>{mode === "STANDARD" ? "Standard booking" : "Simplified booking"}</button>
+            ))}
+            <Button onClick={() => bookingModeMutation.mutate(bookingMode)} disabled={bookingModeMutation.isPending || bookingMode === bookingSettingsQuery.data?.mode} className="h-11 rounded-xl bg-[#087C48] px-5">{bookingModeMutation.isPending ? "Saving..." : "Save booking mode"}</Button>
+          </div>
+        </section>
+      ) : null}
 
       <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-6">
         <MetricCard label="Overdue" value={overdueCount} icon={Clock3} tone="red" />
@@ -655,6 +691,7 @@ export function AppointmentRequestsPage() {
                                 {item.owner.firstName} {item.owner.lastName}
                               </p>
                               <p className="mt-1 text-[13px] font-semibold text-[#587267]">{item.owner.phoneNumber}</p>
+                              {item.bookingSource === "SIMPLIFIED" ? <span className="mt-2 inline-flex rounded-full bg-[#EAF7F0] px-2 py-1 text-[10px] font-black uppercase text-[#087C48]">Simplified booking</span> : null}
                             </div>
                           </div>
                           <div>

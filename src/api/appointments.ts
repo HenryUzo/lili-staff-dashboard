@@ -36,17 +36,22 @@ function groupPreferredSlots(preferredSlots: string[] | null | undefined): Appoi
 
 function normalizeAppointment(record: RawAppointmentDetail): AppointmentRequestDetail;
 function normalizeAppointment(record: RawAppointmentBase): AppointmentRequestListItem;
-function normalizeAppointment(record: RawAppointmentBase | RawAppointmentDetail) {
+function normalizeAppointment(record: RawAppointmentBase | RawAppointmentDetail): AppointmentRequestListItem | AppointmentRequestDetail {
   const preferredSelections =
     record.preferredSelections?.length
       ? record.preferredSelections
       : groupPreferredSlots(record.preferredSlots);
 
-  return {
+  const normalized = {
     ...record,
+    bookingSource: record.bookingSource ?? "STANDARD" as const,
     files: record.files ?? [],
     preferredSelections
   };
+  if ("symptomsOrConcerns" in record) {
+    return { ...normalized, smsDeliveries: record.smsDeliveries ?? [] } as AppointmentRequestDetail;
+  }
+  return normalized as AppointmentRequestListItem;
 }
 
 export async function getAppointmentRequests(filters: AppointmentListFilters, cursor?: string | null) {
@@ -99,5 +104,17 @@ export async function sendAppointmentRescheduleLink(id: string, responseDeadline
 
 export async function runAppointmentOverdueSweep() {
   const response = await api.post<{ markedCount: number }>("/api/appointment-requests/mark-overdue");
+  return response.data;
+}
+
+export type AppointmentBookingMode = "STANDARD" | "SIMPLIFIED";
+
+export async function getAppointmentBookingAdminSettings() {
+  const response = await api.get<{ mode: AppointmentBookingMode; updatedAt: string }>("/api/appointment-booking/admin/settings");
+  return response.data;
+}
+
+export async function updateAppointmentBookingAdminSettings(mode: AppointmentBookingMode) {
+  const response = await api.patch<{ mode: AppointmentBookingMode; updatedAt: string }>("/api/appointment-booking/admin/settings", { mode });
   return response.data;
 }
