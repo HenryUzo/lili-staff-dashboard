@@ -45,6 +45,20 @@ function normalizeAppointment(record: RawAppointmentBase | RawAppointmentDetail)
   const normalized = {
     ...record,
     bookingSource: record.bookingSource ?? "STANDARD" as const,
+    gclid: record.gclid ?? null,
+    gbraid: record.gbraid ?? null,
+    wbraid: record.wbraid ?? null,
+    utmSource: record.utmSource ?? null,
+    utmMedium: record.utmMedium ?? null,
+    utmCampaign: record.utmCampaign ?? null,
+    utmTerm: record.utmTerm ?? null,
+    utmContent: record.utmContent ?? null,
+    landingPage: record.landingPage ?? null,
+    referrer: record.referrer ?? null,
+    attributionCapturedAt: record.attributionCapturedAt ?? null,
+    googleAdsBookedUploadedAt: record.googleAdsBookedUploadedAt ?? null,
+    googleAdsAttendedUploadedAt: record.googleAdsAttendedUploadedAt ?? null,
+    googleAdsUploadError: record.googleAdsUploadError ?? null,
     files: record.files ?? [],
     preferredSelections
   };

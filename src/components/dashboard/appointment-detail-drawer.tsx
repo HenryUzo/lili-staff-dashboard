@@ -1306,6 +1306,15 @@ export function AppointmentDetailDrawer({
                       <CopyableId label="Calendar event id" value={request.calendarEventId} />
                       <CopyableId label="Draft id" value={request.draft?.id} />
                       <DetailField label="Draft submitted at" value={formatDateTime(request.draft?.submittedAt)} />
+                      <DetailField label="Attribution source" value={request.utmSource ?? (request.gclid || request.gbraid || request.wbraid ? "Google Ads" : "Direct / unknown")} />
+                      <DetailField label="UTM medium" value={request.utmMedium} />
+                      <DetailField label="UTM campaign" value={request.utmCampaign} />
+                      <DetailField label="UTM term" value={request.utmTerm} />
+                      <CopyableId label="Google click id" value={request.gclid ?? request.gbraid ?? request.wbraid} />
+                      <DetailField label="Attribution captured" value={formatDateTime(request.attributionCapturedAt)} />
+                      <DetailField label="Google Ads booked upload" value={formatDateTime(request.googleAdsBookedUploadedAt)} />
+                      <DetailField label="Google Ads attended upload" value={formatDateTime(request.googleAdsAttendedUploadedAt)} />
+                      <DetailField label="Google Ads upload error" value={request.googleAdsUploadError} />
                     </div>
                   </div>
                 ) : null}
