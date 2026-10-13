@@ -75,6 +75,7 @@ export async function getAppointmentRequests(filters: AppointmentListFilters, cu
       limit: filters.limit ?? 25,
       search: filters.search || undefined,
       status: filters.status && filters.status !== "ALL" ? filters.status : undefined,
+      sort: filters.sort ?? "latest",
       dateFrom: toDateTimeRange(filters.dateFrom),
       dateTo: toDateTimeRange(filters.dateTo, true)
     }

@@ -42,15 +42,20 @@ import {
   isToday
 } from "@/lib/format";
 import { cn } from "@/lib/utils";
-import type { AppointmentRequestListItem, AppointmentRequestStatus, CalendarSyncStatus } from "@/types/api";
+import type { AppointmentListFilters, AppointmentRequestListItem, AppointmentRequestStatus, CalendarSyncStatus } from "@/types/api";
 
 type AppointmentQueueTab = "overdue" | "needs-review" | "scheduled" | "closed" | "all";
+type AppointmentSort = "priority" | "latest" | "oldest";
 
 const queueTabs: AppointmentQueueTab[] = ["overdue", "needs-review", "scheduled", "closed", "all"];
 const closedStatuses = new Set(["CANCELLED", "COMPLETED", "NO_SHOW"]);
 
 function parseQueueTab(value: string | null): AppointmentQueueTab {
   return queueTabs.includes(value as AppointmentQueueTab) ? (value as AppointmentQueueTab) : "needs-review";
+}
+
+function parseAppointmentSort(value: string | null): AppointmentSort {
+  return value === "latest" || value === "oldest" ? value : "priority";
 }
 
 function isUrgentAppointment(item: AppointmentRequestListItem) {
@@ -94,10 +99,16 @@ function compareScheduled(left: AppointmentRequestListItem, right: AppointmentRe
   return new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime();
 }
 
-function sortAppointments(items: AppointmentRequestListItem[], tab: AppointmentQueueTab) {
+function sortAppointments(items: AppointmentRequestListItem[], tab: AppointmentQueueTab, sort: AppointmentSort) {
   const sorted = [...items];
 
   sorted.sort((left, right) => {
+    if (sort !== "priority") {
+      const direction = sort === "oldest" ? 1 : -1;
+      const dateDifference = new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+      return direction * (dateDifference || left.id.localeCompare(right.id));
+    }
+
     const leftUrgent = isUrgentAppointment(left);
     const rightUrgent = isUrgentAppointment(right);
     const leftStale = isStalePendingReview(left);
@@ -330,6 +341,7 @@ export function AppointmentRequestsPage() {
   const { appointmentId } = useParams();
   const [searchParams] = useSearchParams();
   const queueTab = parseQueueTab(searchParams.get("tab"));
+  const sortMode = parseAppointmentSort(searchParams.get("sort"));
   const searchValue = searchParams.get("search") ?? "";
   const dateFrom = searchParams.get("dateFrom") ?? "";
   const dateTo = searchParams.get("dateTo") ?? "";
@@ -374,14 +386,15 @@ export function AppointmentRequestsPage() {
     updateUrl({ search: debouncedSearch.trim() || null }, { replace: true });
   }, [debouncedSearch, searchValue]);
 
-  const filters = useMemo(
+  const filters = useMemo<AppointmentListFilters>(
     () => ({
       search: searchValue.trim(),
       dateFrom,
       dateTo,
+      sort: sortMode === "oldest" ? "oldest" : "latest",
       limit: 20
     }),
-    [dateFrom, dateTo, searchValue]
+    [dateFrom, dateTo, searchValue, sortMode]
   );
 
   const requestsQuery = useInfiniteQuery({
@@ -440,8 +453,8 @@ export function AppointmentRequestsPage() {
       return true;
     });
 
-    return sortAppointments(filtered, queueTab);
-  }, [confirmedTodayOnly, duplicateOnly, items, queueTab, staleOnly, syncIssuesOnly, urgentOnly]);
+    return sortAppointments(filtered, queueTab, sortMode);
+  }, [confirmedTodayOnly, duplicateOnly, items, queueTab, sortMode, staleOnly, syncIssuesOnly, urgentOnly]);
   const activeIndex = visibleItems.findIndex((item) => item.id === appointmentId);
   const previousAppointmentId = activeIndex > 0 ? visibleItems[activeIndex - 1]?.id : null;
   const nextAppointmentId =
@@ -607,9 +620,22 @@ export function AppointmentRequestsPage() {
               Intake review, scheduling, and sync follow-up stay in one list with URL-persisted state.
             </p>
           </div>
-          <span className="rounded-full bg-[#EAF7F0] px-4 py-2 text-sm font-extrabold text-[#5F756C]">
-            {visibleItems.length} shown
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <label htmlFor="appointment-sort" className="text-sm font-bold text-[#5F756C]">Sort by</label>
+            <select
+              id="appointment-sort"
+              value={sortMode}
+              onChange={(event) => updateUrl({ sort: event.target.value === "priority" ? null : event.target.value })}
+              className="h-10 rounded-xl border border-[#DDEBE2] bg-white px-3 text-sm font-bold text-[#102E24] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#087C48]"
+            >
+              <option value="priority">Priority (default)</option>
+              <option value="latest">Latest submitted</option>
+              <option value="oldest">Oldest submitted</option>
+            </select>
+            <span className="rounded-full bg-[#EAF7F0] px-4 py-2 text-sm font-extrabold text-[#5F756C]">
+              {visibleItems.length} shown
+            </span>
+          </div>
         </div>
 
         <div className="mt-5">
@@ -632,11 +658,23 @@ export function AppointmentRequestsPage() {
               <img src={emptyFilesStateIllustration} alt="" aria-hidden="true" className="w-40" />
               <h3 className="mt-4 text-xl font-black text-[#102E24]">No appointment requests found</h3>
               <p className="mt-2 max-w-md text-sm leading-6 text-[#5F756C]">
-                Try clearing filters or checking another queue.
+                {requestsQuery.hasNextPage
+                  ? "No matches in the requests loaded so far. Load more to keep checking this queue."
+                  : "Try clearing filters or checking another queue."}
               </p>
+              {requestsQuery.hasNextPage ? (
+                <Button
+                  variant="outline"
+                  className="mt-5 rounded-2xl border-[#DDEBE2]"
+                  onClick={() => requestsQuery.fetchNextPage()}
+                  disabled={requestsQuery.isFetchingNextPage}
+                >
+                  {requestsQuery.isFetchingNextPage ? "Loading more..." : "Load more requests"}
+                </Button>
+              ) : null}
               <Button
                 variant="outline"
-                className="mt-5 rounded-2xl border-[#DDEBE2]"
+                className="mt-3 rounded-2xl border-[#DDEBE2]"
                 onClick={() => {
                   setSearchInput("");
                   navigate({ pathname: appointmentId ? `/appointments/${appointmentId}` : "/appointments", search: "" }, { replace: true });

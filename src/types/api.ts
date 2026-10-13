@@ -427,6 +427,7 @@ export interface AppointmentListFilters {
   status?: AppointmentRequestStatus | "ALL";
   dateFrom?: string;
   dateTo?: string;
+  sort?: "latest" | "oldest";
   limit?: number;
 }
 
