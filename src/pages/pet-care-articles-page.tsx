@@ -549,6 +549,11 @@ export function PetCareArticlesPage() {
   const [invalidImageSectionId, setInvalidImageSectionId] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [reviewerEmail, setReviewerEmail] = useState("");
+  const [generatedPreviewLink, setGeneratedPreviewLink] = useState<{
+    articleId: string;
+    shareType: "COMMENT" | "REVIEWER";
+    url: string;
+  } | null>(null);
   const articlesQuery = useQuery({
     queryKey: ["pet-care-articles", status, staleOnly, search],
     queryFn: () => getPetCareArticles({ status, stale: staleOnly, search }),
@@ -572,6 +577,9 @@ export function PetCareArticlesPage() {
       setDraft(articleToInput(selected));
     }
   }, [selected]);
+  useEffect(() => {
+    setGeneratedPreviewLink(null);
+  }, [articleId]);
   useEffect(() => {
     if (isCreating) {
       setDraft(blankArticle);
@@ -688,14 +696,19 @@ export function PetCareArticlesPage() {
       id: string;
       shareType: "COMMENT" | "REVIEWER";
     }) => createPetCarePreviewShare(id, shareType),
-    onSuccess: async (share) => {
+    onSuccess: async (share, variables) => {
       const link = `${PUBLIC_SITE_URL}/pet-care/preview/${share.token}`;
-      await navigator.clipboard.writeText(link);
-      toast.success(
-        share.shareType === "REVIEWER"
-          ? "Veterinarian approval link copied"
-          : "Comment preview link copied",
-      );
+      setGeneratedPreviewLink({ articleId: variables.id, shareType: share.shareType, url: link });
+      try {
+        await navigator.clipboard.writeText(link);
+        toast.success(
+          share.shareType === "REVIEWER"
+            ? "Veterinarian approval link copied"
+            : "Comment preview link copied",
+        );
+      } catch {
+        toast.error("Link created, but copying failed. Select the full URL shown below.");
+      }
       await refresh();
     },
     onError: (error) =>
@@ -1833,12 +1846,29 @@ export function PetCareArticlesPage() {
                             </Button>
                             <Button
                               variant="outline"
-                              onClick={() => shareMutation.mutate({ id: selected.id, shareType: "REVIEWER" })}
+                              disabled={shareMutation.isPending}
+                              onClick={() => {
+                                setGeneratedPreviewLink(null);
+                                shareMutation.mutate({ id: selected.id, shareType: "REVIEWER" });
+                              }}
                             >
-                              <Copy className="mr-2 h-4 w-4" />
-                              Copy approval link
+                              {shareMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
+                              {shareMutation.isPending ? "Creating approval link..." : "Generate & copy approval link"}
                             </Button>
                           </div>
+                          {generatedPreviewLink?.articleId === selected.id && generatedPreviewLink.shareType === "REVIEWER" ? (
+                            <div className="mt-4 space-y-2">
+                              <label htmlFor="generated-approval-link" className="text-sm font-semibold">Approval URL</label>
+                              <Input
+                                id="generated-approval-link"
+                                type="url"
+                                readOnly
+                                value={generatedPreviewLink.url}
+                                onFocus={(event) => event.currentTarget.select()}
+                              />
+                              <p className="text-xs text-[#60736B]">Copy the full URL above only after the confirmation appears. Each click creates a new private link valid for seven days.</p>
+                            </div>
+                          ) : null}
                           {!assignedReviewer?.email ? (
                             <p className="text-sm font-semibold text-[#A33A2B]">Save the assigned veterinarian's email before sending.</p>
                           ) : null}
@@ -1867,21 +1897,35 @@ export function PetCareArticlesPage() {
                         <Button
                           variant="outline"
                           className="mt-4"
-                          onClick={() =>
+                          disabled={shareMutation.isPending}
+                          onClick={() => {
+                            setGeneratedPreviewLink(null);
                             shareMutation.mutate({
                               id: selected.id,
                               shareType: "COMMENT",
-                            })
-                          }
+                            });
+                          }}
                         >
-                          <Copy className="mr-2 h-4 w-4" />
-                          Copy comment link
+                          {shareMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4" />}
+                          {shareMutation.isPending ? "Creating comment link..." : "Generate & copy comment link"}
                         </Button>
                       ) : (
                         <p className="mt-4 text-sm text-[#60736B]">
                           Save the draft first.
                         </p>
                       )}
+                      {selected && generatedPreviewLink?.articleId === selected.id && generatedPreviewLink.shareType === "COMMENT" ? (
+                        <div className="mt-4 space-y-2">
+                          <label htmlFor="generated-comment-link" className="text-sm font-semibold">Comment preview URL</label>
+                          <Input
+                            id="generated-comment-link"
+                            type="url"
+                            readOnly
+                            value={generatedPreviewLink.url}
+                            onFocus={(event) => event.currentTarget.select()}
+                          />
+                        </div>
+                      ) : null}
                     </section>
                     <section>
                       <h2 className="flex items-center gap-2 text-lg font-extrabold">
