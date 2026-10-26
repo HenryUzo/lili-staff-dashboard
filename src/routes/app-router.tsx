@@ -12,6 +12,7 @@ import { ForbiddenPage } from "@/pages/forbidden-page";
 import { AcceptStaffInvitationPage } from "@/pages/accept-staff-invitation-page";
 import { DashboardHomePage } from "@/pages/dashboard-home-page";
 import { ClientsPage } from "@/pages/clients-page";
+import { PotentialClientsPage } from "@/pages/potential-clients-page";
 import { ClientDetailPage } from "@/pages/client-detail-page";
 import { MarketingCampaignWorkspacePage } from "@/pages/marketing-campaign-workspace-page";
 import { MarketingCampaignsLandingPage } from "@/pages/marketing-campaigns-landing-page";
@@ -59,7 +60,7 @@ export const appRouter = createBrowserRouter([
           },
           {
             element: <PermissionRoute permission="CLIENTS_VIEW" />,
-            children: [{ path: "clients", element: <ClientsPage /> }, { path: "clients/:ownerId", element: <ClientDetailPage /> }]
+            children: [{ path: "clients", element: <ClientsPage /> }, { path: "clients/potential", element: <PotentialClientsPage /> }, { path: "clients/:ownerId", element: <ClientDetailPage /> }]
           },
           {
             element: <PermissionRoute permission="PET_CARE_VIEW" />,

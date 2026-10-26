@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BookOpenText, ChevronDown, ClipboardList, Gift, LayoutDashboard, Mail, PawPrint, ShieldCheck, Stethoscope, UsersRound } from "lucide-react";
+import { BookOpenText, ChevronDown, ClipboardList, Gift, LayoutDashboard, Mail, PawPrint, ShieldCheck, Stethoscope, UserRoundSearch, UsersRound } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import dogCatSidebarIllustration from "@/assets/illustrations/dog-cat-sidebar-illustration.png";
 import liliLogo from "@/assets/illustrations/lili-veterinary-hospital-logo.svg";
@@ -13,6 +13,7 @@ const navItems = [
   { to: "/appointments", label: "Appointment Requests", icon: ClipboardList, permission: "APPOINTMENTS_VIEW" as const },
   { to: "/new-patients", label: "New Patient Requests", icon: PawPrint, permission: "NEW_PATIENTS_VIEW" as const },
   { to: "/clients", label: "Clients", icon: UsersRound, permission: "CLIENTS_VIEW" as const },
+  { to: "/clients/potential", label: "Potential Clients", icon: UserRoundSearch, permission: "CLIENTS_VIEW" as const },
   { to: "/campaigns", label: "Email Campaigns", icon: Mail, superAdminOnly: true },
   { to: "/wellness-giveaway", label: "Wellness Giveaway", icon: Gift, superAdminOnly: true },
   { to: "/pet-care", label: "Pet Care Library", icon: BookOpenText, exclude: "/pet-care/reviewers", permission: "PET_CARE_VIEW" as const },

@@ -1,8 +1,20 @@
 import { api } from "@/api/http";
 import type { ClientDetail, ClientDirectoryItem, ClientImportRun, ClientLifecycleRecord, CursorListResponse } from "@/types/api";
 
+export type PotentialClient = { id: string; source: "APPOINTMENT_DRAFT" | "NEW_PATIENT_FORM" | "WELLNESS_GIVEAWAY" | "PET_CARE_NEWSLETTER"; sourceLabel: string; firstName: string | null; lastName: string | null; email: string | null; phoneNumber: string | null; emailMarketingStatus: "NOT_SUBSCRIBED" | "PENDING_CONFIRMATION" | "SUBSCRIBED" | "UNSUBSCRIBED" | "SUPPRESSED"; emailConsentAt: string | null; createdAt: string };
+
 export async function getClients(input: { search?: string; consent?: "EMAIL" | "SMS" | "NONE"; cursor?: string | null; limit?: number }) {
   const response = await api.get<CursorListResponse<ClientDirectoryItem>>("/api/clients", { params: { ...input, limit: input.limit ?? 50, cursor: input.cursor ?? undefined } });
+  return response.data;
+}
+
+export async function getPotentialClients(input: { search?: string; cursor?: string | null; limit?: number }) {
+  const response = await api.get<CursorListResponse<PotentialClient>>("/api/clients/potential", { params: { ...input, limit: input.limit ?? 50, cursor: input.cursor ?? undefined } });
+  return response.data;
+}
+
+export async function confirmPotentialClientEmailConsent(id: string) {
+  const response = await api.post<{ id: string; emailMarketingConfirmed: boolean; emailConsentAt: string }>(`/api/clients/potential/${id}/confirm-email`);
   return response.data;
 }
 
