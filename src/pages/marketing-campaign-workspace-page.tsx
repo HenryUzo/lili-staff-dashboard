@@ -94,7 +94,7 @@ function Modal({ open, onClose, title, description, children, compact = false, d
     : drawer
       ? "recipient-drawer inset-y-0 right-0 left-auto h-[100dvh] w-[min(720px,100vw)] max-w-none translate-x-0 translate-y-0 rounded-none border-y-0 border-r-0"
       : compact
-        ? "inset-y-auto right-1/2 h-auto max-h-[calc(100dvh-32px)] w-[min(500px,calc(100vw-32px))] translate-x-1/2 -translate-y-1/2 rounded-2xl"
+        ? "inset-y-auto top-1/2 right-1/2 h-auto max-h-[calc(100dvh-32px)] w-[min(500px,calc(100vw-32px))] translate-x-1/2 -translate-y-1/2 rounded-2xl"
         : "inset-y-8 right-1/2 w-[min(920px,calc(100vw-32px))] translate-x-1/2 rounded-2xl";
 
   return <Dialog open={open} onOpenChange={(next) => !next && onClose()}><DialogContent className={contentClassName}><DialogHeader><DialogTitle>{title}</DialogTitle><DialogDescription>{description}</DialogDescription></DialogHeader><div className="min-h-0 flex-1 overflow-y-auto p-6">{children}</div></DialogContent></Dialog>;
